@@ -1,0 +1,55 @@
+# artillery-smoke.yml — CI smoke load test (runs on every develop push)
+#
+# Intentionally lightweight: 30s warm-up, then 60s at 50 arrivals/s.
+# Total test time: ~2 minutes. Designed to fit in a CI step budget.
+#
+# Acceptance: p95 < 3000ms, error rate < 1%
+#
+# Run:
+#   artillery run --env target=https://your-app.workers.dev load-tests/artillery-smoke.yml
+
+config:
+  target: "{{ $env.target || 'http://localhost:5173' }}"
+  plugins:
+    expect: {}
+  defaults:
+    headers:
+      Content-Type: "application/x-www-form-urlencoded"
+  phases:
+    - name: "Warm-up"
+      duration: 30
+      arrivalRate: 10
+    - name: "Smoke load"
+      duration: 60
+      arrivalRate: 50
+
+  ensure:
+    p95: 3000
+    maxErrorRate: 1
+
+  # Emit structured output for CI parsing
+  output: "load-tests/results/artillery-smoke-{{ $timestamp }}.json"
+
+scenarios:
+  - name: "Health check (smoke)"
+    weight: 20
+    flow:
+      - get:
+          url: "/api/public/health"
+          expect:
+            - statusCode: 200
+            - hasProperty: "status"
+
+  - name: "Webhook ingest (smoke)"
+    weight: 80
+    flow:
+      - post:
+          url: "/api/public/twilio-webhook"
+          body: "MessageSid=SM{{ $randomString() }}&From=whatsapp%3A%2B234{{ $randomInt(7000000000, 9999999999) }}&To=whatsapp%3A%2B1234567890&Body=Hello+I+want+to+order&NumMedia=0&AccountSid=ACtest&ProfileName=Customer{{ $randomInt(1, 10000) }}"
+          headers:
+            X-Twilio-Signature: "artillery-smoke-test"
+          expect:
+            - statusCode:
+                - 200
+                - 204
+                - 400 # sig rejection is expected — no real Twilio sig

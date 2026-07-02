@@ -1,0 +1,94 @@
+# artillery-config.yml — Artillery load test for Wabizz
+#
+# Complements the k6 test with a YAML-driven scenario runner.
+# Good for CI integration and quick smoke tests in pipelines.
+#
+# Install: npm install -g artillery artillery-plugin-expect
+# Run:     artillery run --env target=https://your-app.workers.dev load-tests/artillery-config.yml
+#
+# Scenarios:
+#   1. Health check flood — verify health endpoint stays responsive under load
+#   2. Webhook flood      — simulate 1,000 concurrent WhatsApp messages
+#   3. Admin API flood    — verify admin dashboard stays usable under load
+#
+# Acceptance criteria:
+#   p95 < 3000ms
+#   Error rate < 1%
+
+config:
+  target: "{{ $env.target || 'http://localhost:5173' }}"
+  plugins:
+    expect: {}
+  defaults:
+    headers:
+      Content-Type: "application/x-www-form-urlencoded"
+  phases:
+    # Phase 1: Warm-up (100 users/s for 30s)
+    - name: "Warm-up"
+      duration: 30
+      arrivalRate: 100
+
+    # Phase 2: Ramp to 1,000 users/s over 2 minutes
+    - name: "Ramp to 1000"
+      duration: 120
+      arrivalRate: 100
+      rampTo: 1000
+
+    # Phase 3: Sustain 1,000 users/s for 5 minutes
+    - name: "Sustain 1000"
+      duration: 300
+      arrivalRate: 1000
+
+    # Phase 4: Ramp to 3,000 users/s (stress test)
+    - name: "Stress 3000"
+      duration: 300
+      arrivalRate: 1000
+      rampTo: 3000
+
+    # Phase 5: Cooldown
+    - name: "Cooldown"
+      duration: 60
+      arrivalRate: 100
+
+  ensure:
+    p95: 3000 # p95 response time < 3s
+    maxErrorRate: 1 # < 1% errors
+
+scenarios:
+  # ── 1. Health check — must stay responsive ────────────────────────────────
+  - name: "Health check"
+    weight: 10
+    flow:
+      - get:
+          url: "/api/public/health"
+          expect:
+            - statusCode: 200
+            - hasProperty: "status"
+
+  # ── 2. WhatsApp webhook flood ─────────────────────────────────────────────
+  - name: "Inbound WhatsApp message"
+    weight: 80
+    flow:
+      - post:
+          url: "/api/public/twilio-webhook"
+          body: "MessageSid=SM{{ $randomString() }}&From=whatsapp%3A%2B234{{ $randomInt(7000000000, 9999999999) }}&To=whatsapp%3A%2B1234567890&Body=Hello+I+want+to+order&NumMedia=0&AccountSid=ACtest&ProfileName=Customer{{ $randomInt(1, 10000) }}"
+          headers:
+            X-Twilio-Signature: "load-test-signature"
+          expect:
+            - statusCode:
+                - 200
+                - 204
+                - 400 # signature rejection is acceptable in load test (no real sig)
+
+  # ── 3. Admin dashboard API ────────────────────────────────────────────────
+  - name: "Admin metrics fetch"
+    weight: 10
+    flow:
+      - get:
+          url: "/admin/api/metrics"
+          headers:
+            x-admin-token: "{{ $env.ADMIN_TEST_TOKEN || 'invalid-token' }}"
+          expect:
+            - statusCode:
+                - 200
+                - 401 # 401 is correct for invalid token

@@ -1,0 +1,2 @@
+cd C:\Users\USER\Downloads\Wabizz
+docker-compose up --build

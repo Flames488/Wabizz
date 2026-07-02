@@ -1,0 +1,219 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "wabizz-app",
+  "compatibility_date": "2025-09-24",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "dist/server/worker-main.js",
+
+  // ── Worker execution model ─────────────────────────────────────────────────
+  // "unbound" removes the 50ms CPU-time limit that applies to the default
+  // "bundled" model. Campaign batch processing (campaign-processor.ts) can
+  // iterate over 50–100 contacts with per-message sleeps, easily exceeding
+  // 50ms of CPU time. Without this, Workers will throw "Worker exceeded CPU
+  // time limit" errors on active campaigns, silently dropping batches.
+  //
+  // Cost: Unbound Workers are billed per GB-second of CPU time (not wall-clock).
+  // For webhook handling (< 5ms CPU), cost is identical to bundled.
+  // For queue workers (campaign batches), cost is proportional to actual work.
+  //
+  // See: https://developers.cloudflare.com/workers/platform/limits/
+  "usage_model": "unbound",
+
+  // ── Cloudflare Queues ──────────────────────────────────────────────────────
+  // REPLACES KV queue. Guarantees at-least-once delivery + automatic retry.
+  //
+  // wabizz-jobs: main job queue (producer: queue.ts, consumer: consumer.ts)
+  // wabizz-dlq:  dead-letter queue — jobs move here after maxRetries
+  //
+  // Fix 10 — Queue partitioning (Stage 2: 3k–10k users)
+  // ─────────────────────────────────────────────────────────────────────────
+  // 8 partitioned queues (wabizz-jobs-0 … wabizz-jobs-7) route by
+  // hash(userId) % 8 so one misbehaving tenant's campaign blasts cannot delay
+  // real-time WhatsApp replies for all other businesses.
+  "queues": {
+    "producers": [
+      { "queue": "wabizz-jobs-0", "binding": "WABIZZ_QUEUE_0" },
+      { "queue": "wabizz-jobs-1", "binding": "WABIZZ_QUEUE_1" },
+      { "queue": "wabizz-jobs-2", "binding": "WABIZZ_QUEUE_2" },
+      { "queue": "wabizz-jobs-3", "binding": "WABIZZ_QUEUE_3" },
+      { "queue": "wabizz-jobs-4", "binding": "WABIZZ_QUEUE_4" },
+      { "queue": "wabizz-jobs-5", "binding": "WABIZZ_QUEUE_5" },
+      { "queue": "wabizz-jobs-6", "binding": "WABIZZ_QUEUE_6" },
+      { "queue": "wabizz-jobs-7", "binding": "WABIZZ_QUEUE_7" }
+    ],
+    "consumers": [
+      {
+        "queue": "wabizz-jobs-0",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5,
+        "max_retries": 5,
+        "dead_letter_queue": "wabizz-dlq",
+        "retry_delay": 1
+      },
+      {
+        "queue": "wabizz-jobs-1",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5,
+        "max_retries": 5,
+        "dead_letter_queue": "wabizz-dlq",
+        "retry_delay": 1
+      },
+      {
+        "queue": "wabizz-jobs-2",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5,
+        "max_retries": 5,
+        "dead_letter_queue": "wabizz-dlq",
+        "retry_delay": 1
+      },
+      {
+        "queue": "wabizz-jobs-3",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5,
+        "max_retries": 5,
+        "dead_letter_queue": "wabizz-dlq",
+        "retry_delay": 1
+      },
+      {
+        "queue": "wabizz-jobs-4",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5,
+        "max_retries": 5,
+        "dead_letter_queue": "wabizz-dlq",
+        "retry_delay": 1
+      },
+      {
+        "queue": "wabizz-jobs-5",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5,
+        "max_retries": 5,
+        "dead_letter_queue": "wabizz-dlq",
+        "retry_delay": 1
+      },
+      {
+        "queue": "wabizz-jobs-6",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5,
+        "max_retries": 5,
+        "dead_letter_queue": "wabizz-dlq",
+        "retry_delay": 1
+      },
+      {
+        "queue": "wabizz-jobs-7",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5,
+        "max_retries": 5,
+        "dead_letter_queue": "wabizz-dlq",
+        "retry_delay": 1
+      }
+    ]
+  },
+
+  // ── Durable Objects ────────────────────────────────────────────────────────
+  // RateLimiterDO:  SHARDED (16 shards) — no single instance bottleneck.
+  // CircuitStateDO: ONE instance per service name ("twilio", "paystack", "anthropic").
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "RATE_LIMIT_DO",
+        "class_name": "RateLimiterDO"
+      },
+      {
+        "name": "CIRCUIT_STATE_DO",
+        "class_name": "CircuitStateDO"
+      }
+    ]
+  },
+
+  // v1: RateLimiterDO (original)
+  // v2: CircuitStateDO (cross-instance circuit breaker state)
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["RateLimiterDO"] },
+    { "tag": "v2", "new_sqlite_classes": ["CircuitStateDO"] }
+  ],
+
+  // ── KV namespaces ──────────────────────────────────────────────────────────
+  "kv_namespaces": [
+    {
+      "binding": "RATE_LIMIT_KV",
+      "id": "12bd29a4d6e54029907790a57bd64558",
+      "preview_id": "861a783bf5264fa4aceee57095f5a09e"
+    },
+    {
+      "binding": "CACHE_KV",
+      "id": "951f5d39524f4258840a9d18af4c1178",
+      "preview_id": "90b9a8a48cd5423d910d9a172ff3fef9"
+    }
+  ],
+
+  // ── Cron triggers ──────────────────────────────────────────────────────────
+  // Fires every 30 minutes:
+  //   - Reminder notifications (trial expiry, overdue payments, renewals)
+  //   - Monitoring: webhook stall check, error rate, queue backlog, DLQ growth
+  //   - Metrics pruning (rows > 7 days)
+  //   - Materialized view refresh (conversation_stats)
+  "triggers": {
+    "crons": ["*/30 * * * *"]
+  },
+
+  // ── Observability ──────────────────────────────────────────────────────────
+  // Cloudflare request logs → Logflare (native integration).
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+
+  // ── Static assets ──────────────────────────────────────────────────────────
+  // Serves built client assets (JS, CSS, images) from dist/client
+  "assets": {
+    "directory": "./dist/client"
+  },
+
+  // ── Module aliases ─────────────────────────────────────────────────────────
+  // Required to resolve TanStack Start virtual modules that are normally
+  // handled by Vite's plugin at build time.
+  // "@" maps to "./src" so that worker-main.js can resolve @/ imports at
+  // Wrangler bundle time without needing a separate tsconfig path mapping.
+  "alias": {
+    "@": "./src",
+    "@tanstack/react-start/server-entry": "./dist/server/server.js",
+    "#tanstack-router-entry": "./dist/server/server.js",
+    "#tanstack-start-entry": "./dist/server/server.js",
+    "tanstack-start-manifest:v": "./src/tanstack-manifest-stub.js",
+    "tailwindcss": "./node_modules/tailwindcss/index.css"
+  },
+
+  // ── Module rules ───────────────────────────────────────────────────────────
+  // Treat CSS files as plain text to prevent wrangler from trying to
+  // resolve/bundle Tailwind CSS imports as JS modules.
+  "rules": [
+    { "type": "Text", "globs": ["**/*.css"], "fallthrough": true }
+  ]
+
+  // ── Secrets (set via `wrangler secret put <NAME>`) ─────────────────────────
+  // Required:
+  //   SUPABASE_URL                   ← https://[project-ref].supabase.co
+  //   SUPABASE_SERVICE_ROLE_KEY
+  //   SUPABASE_PUBLISHABLE_KEY
+  //   ANTHROPIC_API_KEY
+  //   TWILIO_AUTH_TOKEN
+  //   TWILIO_ACCOUNT_SID
+  //   TWILIO_API_KEY_SID
+  //   TWILIO_API_KEY_SECRET
+  //   TWILIO_PHONE_NUMBER             ← whatsapp:+...
+  //   WABIZZ_PAYSTACK_SECRET_KEY
+  //   WABIZZ_PAYSTACK_PUBLIC_KEY
+  //   APP_URL
+  //   ADMIN_JWT_SECRET               ← random 64-char string
+  //   ADMIN_SEED_USERNAME            ← admin login username (default: "admin")
+  //   ADMIN_SEED_PASSWORD            ← admin login password — REQUIRED
+  //   CRON_SECRET
+  // Optional:
+  //   SLACK_ALERT_WEBHOOK_URL
+  //   TELEGRAM_BOT_TOKEN
+  //   TELEGRAM_CHAT_ID
+  //   UPSTASH_REDIS_REST_URL         ← Node/PM2 rate limiting
+  //   UPSTASH_REDIS_REST_TOKEN
+  //   LOGFLARE_SOURCE_KEY            ← structured event forwarding
+  //   HEALTH_CHECK_SECRET
+}

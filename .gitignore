@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+node_modules/
+dist/
+.tanstack/
+.wrangler/
+desktop.ini
+.dev.vars
+.env.local

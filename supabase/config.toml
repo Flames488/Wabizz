@@ -1,0 +1,3 @@
+# Replace with your actual Supabase project ref (Dashboard → Project Settings → General → Reference ID)
+# Do NOT commit a real project_id to source control.
+project_id = "your-project-ref-here"

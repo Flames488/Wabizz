@@ -1,0 +1,34 @@
+cd C:\Users\USER\Documents\Wabizz-Vitar\Wabizz
+bun run worker:dev
+
+
+cd C:\Users\USER\Downloads\Wabizz
+bun run build
+bunx wrangler dev --local
+
+bunx wrangler dev --local
+bun run dev
+
+
+set CLOUDFLARE_API_TOKEN=cfat_GbF4nS8q3ieQwEuBXkoZnQFe3V2WVxxD8gHbWl7R3ffda86f
+set CLOUDFLARE_ACCOUNT_ID=bdde358f132f3d4b82ba903486db6cef
+bunx wrangler whoami
+
+
+
+**The 2 blockers before you deploy:**
+1. `RATE_LIMIT_KV` and `CACHE_KV` in `wrangler.jsonc` still have all-zeros placeholder IDs. Run the `wrangler kv namespace create` commands from the deploy checklist and paste the real IDs in. The `bun run pre-launch` gate will fail and block `wrangler deploy` until this is done — which is exactly the intended behaviour.
+2. If you want the richer e2e page objects and ramp3000/spike/soak load scenarios from Wabizz_v, just copy the `e2e/` and `load-tests/` folders from it into Wabizz.zip. Everything else from Wabizz_v is either identical or missing.
+
+
+
+cd "C:\Users\USER\OneDrive\Documents\Wabizz-Vitar\Wabizz\Wabizz"
+
+$env:CLOUDFLARE_API_TOKEN="cfut_JMT7UoQ34qMsDYGAgE6duJunB3GAuRX8pIRO6f3Se1495771"
+
+bun x wrangler@4.88.0 deploy
+
+
+
+
+PS C:\Users\USER\OneDrive\Documents\Wabizz-Vitar\Wabizz\Wabizz>

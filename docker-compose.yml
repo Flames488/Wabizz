@@ -1,0 +1,71 @@
+# Local dev stack for Wabizz.
+# Cloudflare Workers KV is emulated by the wrangler dev server (run separately).
+# This compose file is for the Node preview build only.
+# Note: top-level 'version' key is omitted — it is deprecated in Compose v2+ and
+# ignored or flagged as an error in modern Docker Desktop / docker compose CLI.
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wabizz-app
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      # Copy from .env — do NOT put real secrets here in docker-compose.yml
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY}
+      VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+      VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-haiku-4-5-20251001}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN}
+      TWILIO_API_KEY_SID: ${TWILIO_API_KEY_SID}
+      TWILIO_API_KEY_SECRET: ${TWILIO_API_KEY_SECRET}
+      TWILIO_PHONE_NUMBER: ${TWILIO_PHONE_NUMBER}
+      WABIZZ_PAYSTACK_SECRET_KEY: ${WABIZZ_PAYSTACK_SECRET_KEY}
+      WABIZZ_PAYSTACK_PUBLIC_KEY: ${WABIZZ_PAYSTACK_PUBLIC_KEY}
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      # Auth & security — required for admin routes and cron endpoint protection
+      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET}
+      CRON_SECRET: ${CRON_SECRET:-dev-cron-secret}
+      HEALTH_CHECK_SECRET: ${HEALTH_CHECK_SECRET:-dev-health-secret}
+      # Optional integrations
+      SLACK_ALERT_WEBHOOK_URL: ${SLACK_ALERT_WEBHOOK_URL:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      UPSTASH_REDIS_REST_URL: ${UPSTASH_REDIS_REST_URL:-}
+      UPSTASH_REDIS_REST_TOKEN: ${UPSTASH_REDIS_REST_TOKEN:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      LOGFLARE_SOURCE_KEY: ${LOGFLARE_SOURCE_KEY:-}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/public/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    labels:
+      - "com.wabizz.service=app"
+      - "com.wabizz.version=13"
+
+  # Nginx reverse proxy (optional — remove if deploying directly on Cloudflare Workers)
+  nginx:
+    image: nginx:alpine
+    container_name: wabizz-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - app
+    restart: unless-stopped
+    profiles:
+      - with-nginx
