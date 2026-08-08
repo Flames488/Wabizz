@@ -9,18 +9,12 @@ import {
   CheckCircle2,
   AlertCircle,
   Package,
-  Sparkles,
   Clock,
-  LogOut,
   Loader2,
   Lock,
   CreditCard,
   X,
   AlertTriangle,
-  Users,
-  Megaphone,
-  Zap,
-  Layers,
 } from "lucide-react";
 import { useRequireAuth } from "@/hooks/use-auth";
 import { useAuthedServerFn } from "@/lib/authed-fn";
@@ -33,6 +27,7 @@ import {
 import { PLANS, type PlanId } from "@/lib/plan";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { DashboardNav } from "@/components/DashboardNav";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/dashboard")({
@@ -222,34 +217,30 @@ function Dashboard() {
   return (
     <div className="min-h-screen bg-surface pb-28">
       <header className="bg-card border-b border-border/60 sticky top-0 z-10 backdrop-blur-md bg-card/90">
-        <div className="mx-auto max-w-3xl px-5 py-4 flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-xs text-muted-foreground">Welcome back</p>
-            <h1 className="text-lg font-bold tracking-tight truncate">{name}</h1>
+        <div className="mx-auto max-w-3xl px-3 sm:px-5 py-4 flex items-center justify-between gap-2 sm:gap-3">
+          <div className="flex items-center gap-1 min-w-0">
+            <DashboardNav onSignOut={signOut} />
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Welcome back</p>
+              <h1 className="text-lg font-bold tracking-tight truncate">{name}</h1>
+            </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {plan && (
               <Link
                 to="/pricing"
-                className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/30 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/15 transition-smooth"
+                className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/30 px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/15 transition-smooth whitespace-nowrap"
               >
                 {plan.name} Plan ✓
               </Link>
             )}
-            <div className="inline-flex items-center gap-2 rounded-full bg-success/15 border border-success/30 px-3 py-1.5">
+            <div className="inline-flex items-center gap-2 rounded-full bg-success/15 border border-success/30 px-2.5 sm:px-3 py-1.5">
               <span className="relative flex h-2 w-2">
                 <span className="animate-pulse-soft absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-success" />
               </span>
-              <span className="text-xs font-semibold text-success">AI is Live</span>
+              <span className="hidden sm:inline text-xs font-semibold text-success">AI is Live</span>
             </div>
-            <button
-              onClick={signOut}
-              className="h-8 w-8 rounded-full flex items-center justify-center hover:bg-muted transition-smooth"
-              aria-label="Sign out"
-            >
-              <LogOut className="h-4 w-4 text-muted-foreground" />
-            </button>
           </div>
         </div>
 
@@ -420,42 +411,11 @@ function Dashboard() {
         </section>
       </main>
 
-      <div className="fixed bottom-6 right-6 flex flex-col items-end gap-3">
-        <Link
-          to="/contacts"
-          className="inline-flex items-center gap-2 rounded-full bg-card text-foreground border border-border px-4 py-3 font-semibold shadow-elegant transition-spring hover:scale-105 active:scale-95"
-        >
-          <Users className="h-4 w-4 text-primary" />
-          Contacts
-        </Link>
-        <Link
-          to="/campaigns"
-          className="inline-flex items-center gap-2 rounded-full bg-card text-foreground border border-border px-4 py-3 font-semibold shadow-elegant transition-spring hover:scale-105 active:scale-95"
-        >
-          <Megaphone className="h-4 w-4 text-primary" />
-          Campaigns
-        </Link>
-        <Link
-          to="/automation"
-          className="inline-flex items-center gap-2 rounded-full bg-card text-foreground border border-border px-4 py-3 font-semibold shadow-elegant transition-spring hover:scale-105 active:scale-95"
-        >
-          <Zap className="h-4 w-4 text-primary" />
-          Automation
-        </Link>
-        <Link
-          to="/dashboard/niche"
-          className="inline-flex items-center gap-2 rounded-full bg-card text-foreground border border-border px-4 py-3 font-semibold shadow-elegant transition-spring hover:scale-105 active:scale-95"
-        >
-          <Layers className="h-4 w-4 text-primary" />
-          Niche Modules
-        </Link>
-        <Link
-          to="/simulator"
-          className="inline-flex items-center gap-2 rounded-full bg-card text-foreground border border-border px-4 py-3 font-semibold shadow-elegant transition-spring hover:scale-105 active:scale-95"
-        >
-          <Sparkles className="h-4 w-4 text-primary" />
-          Test AI
-        </Link>
+      {/* Single primary CTA — the rest of the section links (Contacts, Campaigns,
+          Automation, Niche Modules, Test AI) now live in the hamburger drawer.
+          A stack of 6 floating buttons here used to overflow off-screen on
+          short phones; one button never does. */}
+      <div className="fixed bottom-6 right-4 sm:right-6 z-10">
         <Link
           to="/settings"
           className="inline-flex items-center gap-2 rounded-full bg-gradient-primary text-primary-foreground px-5 py-3.5 font-semibold shadow-float transition-spring hover:scale-105 active:scale-95"

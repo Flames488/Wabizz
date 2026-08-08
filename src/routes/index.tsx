@@ -340,6 +340,21 @@ function Landing() {
           position: absolute; border-radius: 50%;
           filter: blur(80px); pointer-events: none;
         }
+
+        /* ── Mobile responsiveness ──────────────────────────────────────── */
+        @media (max-width: 480px) {
+          .wbz-inner { padding: 0 16px; }
+          .wbz-nav-links { gap: 12px !important; }
+          .wbz-nav-cta { padding: 9px 14px !important; font-size: 12.5px !important; }
+          .wbz-phone { width: 230px; }
+          .wbz-chat-body { height: 400px; }
+        }
+        @media (max-width: 360px) {
+          .wbz-nav-wordmark { display: none; }
+          .wbz-nav-pricing { display: none; }
+        }
+        /* Prevent any fixed-width decorative element from forcing horizontal scroll */
+        .wbz-bg { overflow-x: hidden; }
       `}</style>
 
       <div className="wbz-bg" style={{ minHeight: "100vh" }}>
@@ -382,6 +397,7 @@ function Landing() {
                 </span>
               </div>
               <span
+                className="wbz-nav-wordmark"
                 style={{
                   fontFamily: "'Outfit',sans-serif",
                   fontWeight: 800,
@@ -393,9 +409,10 @@ function Landing() {
                 Wabizz
               </span>
             </Link>
-            <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+            <div className="wbz-nav-links" style={{ display: "flex", alignItems: "center", gap: 24 }}>
               <Link
                 to="/pricing"
+                className="wbz-nav-pricing"
                 style={{
                   textDecoration: "none",
                   color: "#4a6741",
@@ -408,7 +425,7 @@ function Landing() {
               </Link>
               <Link
                 to="/auth"
-                className="wbz-btn-p"
+                className="wbz-btn-p wbz-nav-cta"
                 style={{ padding: "10px 20px", fontSize: 13, borderRadius: 10 }}
               >
                 Get Started <ArrowRight size={15} />
