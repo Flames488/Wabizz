@@ -11,15 +11,35 @@
  *             rather than `whatsapp_number` (nullable, may be empty pre-migration).
  */
 
-import { createServerFn } from "@tanstack/react-start";
+import { createServerFn, createServerOnlyFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { PLANS, type PlanId } from "@/lib/plan";
 import { logError, logInfo } from "@/lib/server-logger";
-import { sendTrialStartedConfirmation } from "@/lib/server/reminders";
-import { withErrorHandling, WabizzError } from "@/lib/server/error-handler";
 import { cache, CacheKeys } from "@/lib/cache";
 import { fetchWithRetry } from "@/lib/request-timeout";
+
+// This file is imported by settings.tsx, pricing.tsx, and dashboard.tsx —
+// all client routes — and a static (or even bare dynamic) import of anything
+// under lib/server/ gets hard-blocked from the client bundle by TanStack
+// Start's import-protection plugin, which broke the build for all three
+// pages. createServerOnlyFn is the framework's sanctioned way around this:
+// it strips the real implementation from the client bundle entirely.
+// (withErrorHandling/WabizzError from lib/server/error-handler were also
+// imported here previously but never actually used anywhere in this file —
+// removed rather than wrapped.)
+const _sendTrialStartedConfirmation = createServerOnlyFn(
+  async (args: {
+    businessName: string;
+    whatsappNumber: string;
+    trialEndsAt: string;
+    businessId: string;
+    requestId: string;
+  }) => {
+    const { sendTrialStartedConfirmation } = await import("@/lib/server/reminders");
+    return sendTrialStartedConfirmation(args);
+  },
+);
 
 const PlanIdSchema = z.enum(["starter", "growth", "pro"]);
 
@@ -147,7 +167,7 @@ export const startTrial = createServerFn({ method: "POST" })
     const whatsappNumber = biz.whatsapp as string | null;
     try {
       if (whatsappNumber) {
-        await sendTrialStartedConfirmation({
+        await _sendTrialStartedConfirmation({
           businessName: biz.name,
           whatsappNumber,
           trialEndsAt,

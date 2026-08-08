@@ -12,8 +12,20 @@
  *   For Stage 2 (3k-5k users): create wabizz-jobs-0..7 and route via hash(userId)%8.
  */
 
+import { createServerOnlyFn } from "@tanstack/react-start";
 import { logError, logInfo } from "@/lib/server-logger";
-import { events } from "@/lib/server/event-pipeline";
+
+// queue.ts is imported by campaign.functions.ts, which campaigns.tsx (a
+// client route) imports — a static import of anything under lib/server/
+// gets hard-blocked from the client bundle by TanStack Start's
+// import-protection plugin, breaking that page's build. createServerOnlyFn
+// strips the real implementation from the client bundle entirely.
+const _emitJobEnqueued = createServerOnlyFn(
+  async (traceId: string, jobId: string, jobType: string, userId?: string) => {
+    const { events } = await import("@/lib/server/event-pipeline");
+    events.jobEnqueued(traceId, jobId, jobType, userId);
+  },
+);
 
 declare const WABIZZ_QUEUE_0: Queue | undefined;
 declare const WABIZZ_QUEUE_1: Queue | undefined;
@@ -247,7 +259,7 @@ export async function enqueue(
     const queue = _selectQueue(queues, userId);
     try {
       await queue.send(job, { contentType: "json" });
-      events.jobEnqueued(traceId, id, jobType, userId);
+      await _emitJobEnqueued(traceId, id, jobType, userId);
     } catch (e) {
       logError("queue", `Failed to enqueue: ${jobType}`, { error: String(e) }, traceId);
       if (syncHandler) {
@@ -263,7 +275,7 @@ export async function enqueue(
   if (syncHandler) {
     try {
       await syncHandler();
-      events.jobEnqueued(traceId, id, jobType, userId);
+      await _emitJobEnqueued(traceId, id, jobType, userId);
     } catch (e) {
       logError("queue", `Sync job failed: ${jobType}`, { error: String(e) }, traceId);
     }

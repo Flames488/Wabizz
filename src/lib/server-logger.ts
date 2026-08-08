@@ -15,6 +15,7 @@
  * ctx.waitUntil(flushLogs()) in worker-entry.ts ensures flush before eviction.
  */
 
+import { createServerOnlyFn } from "@tanstack/react-start";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { captureFatal, captureMessage } from "@/lib/sentry";
 
@@ -197,6 +198,25 @@ export function logFatal(
 
 // ── Fatal alerts (fire-and-forget) ────────────────────────────────────────────
 
+// server-logger.ts is imported by files that ARE reachable from client
+// bundles (e.g. chat.functions.ts, keys.functions.ts, settings.tsx ->
+// keys.functions.ts). TanStack Start's import-protection plugin hard-blocks
+// any import matching **/server/** from ending up in a client bundle — a
+// bare `import("@/lib/server/alerts/alert-engine")` here broke the build for
+// every page that transitively imports server-logger.ts (settings,
+// simulator, etc.), even though it's only ever meant to run server-side.
+// createServerOnlyFn is the framework's sanctioned way to keep genuinely
+// server-only code reachable from shared modules: the real implementation is
+// stripped from the client bundle entirely (replaced with a stub that throws
+// if ever actually invoked client-side), so the import graph never crosses
+// the **/server/** boundary in the client build.
+const _sendTelegramFatalAlert = createServerOnlyFn(
+  async (source: string, message: string, requestId?: string) => {
+    const { alerts: eng } = await import("@/lib/server/alerts/alert-engine");
+    void eng.systemError(source, message, requestId);
+  },
+);
+
 function _sendFatalAlerts(
   source: string,
   message: string,
@@ -219,7 +239,5 @@ function _sendFatalAlerts(
   }
 
   // Telegram fatal alert — fire and forget
-  void import("@/lib/server/alerts/alert-engine").then(({ alerts: eng }) => {
-    void eng.systemError(source, message, requestId);
-  });
+  void _sendTelegramFatalAlert(source, message, requestId).catch(() => undefined);
 }
