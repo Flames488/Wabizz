@@ -136,7 +136,20 @@ export const chatWithAI = createServerFn({ method: "POST" })
           { status: res.status, body: t },
           requestId,
         );
-        return { reply: null, error: "AI service error. Please try again." };
+        // Surface a status-specific hint so whoever is looking at the
+        // simulator can self-diagnose without digging through server logs —
+        // a generic "AI service error" for every failure mode (bad key,
+        // no credits, Anthropic outage) makes this near-impossible to fix
+        // without Supabase access.
+        const hint =
+          res.status === 401 || res.status === 403
+            ? "Invalid or expired ANTHROPIC_API_KEY — check Cloudflare Worker secrets."
+            : res.status === 400
+              ? "The AI request was malformed (bad request to Anthropic)."
+              : res.status >= 500
+                ? "Anthropic is temporarily unavailable."
+                : `Anthropic returned HTTP ${res.status}.`;
+        return { reply: null, error: `AI service error: ${hint}` };
       }
 
       const json = await res.json();
