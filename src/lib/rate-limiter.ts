@@ -133,13 +133,27 @@ function _checkMemRateLimit(key: string, limit: number, windowMs: number): RateL
 // ── Rate limit event recording (fire-and-forget) ──────────────────────────────
 
 function _recordBlock(key: string, endpoint: string, ip?: string): void {
-  // Write to rate_limit_events for analytics — never awaited
-  void supabaseAdmin.from("rate_limit_events").insert({
-    key,
-    endpoint,
-    ip: ip ?? null,
-    occurred_at: new Date().toISOString(),
-  });
+  // Write to rate_limit_events for analytics — never awaited, and never
+  // allowed to affect rate limiting itself. supabaseAdmin is a lazy Proxy
+  // that throws SYNCHRONOUSLY on first property access if Supabase env vars
+  // are missing/misconfigured — without this try/catch that throw would
+  // propagate straight out of checkRateLimit() and take down every endpoint
+  // that depends on rate limiting whenever Supabase config drifts.
+  try {
+    void supabaseAdmin
+      .from("rate_limit_events")
+      .insert({
+        key,
+        endpoint,
+        ip: ip ?? null,
+        occurred_at: new Date().toISOString(),
+      })
+      .then(undefined, () => {
+        // Best-effort analytics only — swallow insert failures too.
+      });
+  } catch {
+    // supabaseAdmin construction failed (missing env vars) — ignore.
+  }
 
   // Track sustained abuse — alert to Sentry if same key is blocked repeatedly
   const now = Date.now();

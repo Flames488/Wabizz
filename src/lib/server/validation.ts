@@ -47,32 +47,36 @@ export const PlanIdSchema = z.enum(["starter", "growth", "pro"]);
 
 // ── Business ──────────────────────────────────────────────────────────────────
 
-export const BusinessSchema = z
-  .object({
-    name: z.string().trim().min(1, "Business name is required").max(200, "Business name too long"),
-    type: z.string().trim().min(1, "Business type is required").max(100, "Business type too long"),
-    email: EmailSchema,
-    whatsapp: PhoneSchema,
-    open_time: TimeSchema,
-    close_time: TimeSchema,
-    products_list: z.string().max(10_000, "Products list too long").default(""),
-    tone: ToneSchema.default("Friendly"),
-    custom_message: z.string().max(2_000, "Custom message too long").optional().default(""),
-    // FIX BUG 6: timezone field was in the DB (migration 012) and read by the
-    // webhook, but was never included in the schema — making it impossible for
-    // business owners to set their timezone through any UI or API path.
-    timezone: z.string().max(100, "Timezone string too long").optional().default("Africa/Lagos"),
-  })
-  .refine(
-    (d) => {
-      // Allow midnight-crossing schedules (e.g. 22:00 – 02:00)
-      // Only reject identical times
-      return d.open_time !== d.close_time;
-    },
-    { message: "Open and close time cannot be the same", path: ["close_time"] },
-  );
+// Base object schema kept separate from BusinessSchema's .refine() below —
+// .refine() returns a ZodEffects wrapper, which has no .partial() method.
+// UpdateBusinessSchema needs .partial() on the plain ZodObject, so it's
+// derived from this base rather than from the refined BusinessSchema.
+const BusinessObjectSchema = z.object({
+  name: z.string().trim().min(1, "Business name is required").max(200, "Business name too long"),
+  type: z.string().trim().min(1, "Business type is required").max(100, "Business type too long"),
+  email: EmailSchema,
+  whatsapp: PhoneSchema,
+  open_time: TimeSchema,
+  close_time: TimeSchema,
+  products_list: z.string().max(10_000, "Products list too long").default(""),
+  tone: ToneSchema.default("Friendly"),
+  custom_message: z.string().max(2_000, "Custom message too long").optional().default(""),
+  // FIX BUG 6: timezone field was in the DB (migration 012) and read by the
+  // webhook, but was never included in the schema — making it impossible for
+  // business owners to set their timezone through any UI or API path.
+  timezone: z.string().max(100, "Timezone string too long").optional().default("Africa/Lagos"),
+});
 
-export const UpdateBusinessSchema = BusinessSchema.partial();
+export const BusinessSchema = BusinessObjectSchema.refine(
+  (d) => {
+    // Allow midnight-crossing schedules (e.g. 22:00 – 02:00)
+    // Only reject identical times
+    return d.open_time !== d.close_time;
+  },
+  { message: "Open and close time cannot be the same", path: ["close_time"] },
+);
+
+export const UpdateBusinessSchema = BusinessObjectSchema.partial();
 
 // ── Paystack keys ─────────────────────────────────────────────────────────────
 

@@ -10,6 +10,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("@/lib/server-logger", () => ({
   logError: vi.fn(),
   logInfo: vi.fn(),
+  // circuitBreaker (via alert-engine's apiDown) also calls logWarn/logFatal
+  // on certain paths — without these the mock module throws "No export
+  // logWarn is defined", surfacing as an unhandled rejection during the run.
+  logWarn: vi.fn(),
+  logFatal: vi.fn(),
 }));
 
 // Mock global fetch

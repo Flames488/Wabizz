@@ -20,7 +20,7 @@ import {
   handleIncomingMessage,
   handlePaystackEvent,
   buildSystemPrompt,
-} from "../../lib/server/twilio-handler";
+} from "../lib/server/twilio-handler";
 import type {
   IncomingMessagePayload,
   IncomingMessageDeps,
@@ -28,7 +28,7 @@ import type {
   AiDeps,
   PaystackDeps,
   BusinessProfile,
-} from "../../lib/server/twilio-handler";
+} from "../lib/server/twilio-handler";
 
 // ── Mock server-logger ───────────────────────────────────────────────────────
 // FIX BUG 5: mock ALL exported logger functions, not just logError.
@@ -36,14 +36,14 @@ import type {
 // "Auto-reply sent", "Conversation escalated"). Without these mocks the
 // test suite crashes with "undefined is not a function" on those paths.
 
-vi.mock("../../lib/server-logger", () => ({
+vi.mock("../lib/server-logger", () => ({
   logError: vi.fn().mockResolvedValue(undefined),
   logInfo: vi.fn().mockResolvedValue(undefined),
   logWarn: vi.fn().mockResolvedValue(undefined),
   logFatal: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { logError } from "../../lib/server-logger";
+import { logError } from "../lib/server-logger";
 const mockLogError = vi.mocked(logError);
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
@@ -55,8 +55,10 @@ const BUSINESS: BusinessProfile = {
   name: "Mama's Kitchen",
   type: "food",
   products_list: "Jollof Rice ₦1500\nEgusi Soup ₦2000",
-  open_time: "08:00",
-  close_time: "22:00",
+  // Always-open window so these tests don't flake depending on the real
+  // wall-clock time in Africa/Lagos when the suite happens to run.
+  open_time: "00:00",
+  close_time: "23:59",
   tone: "Friendly",
   custom_message: null,
 };
@@ -177,11 +179,15 @@ describe("handleIncomingMessage", () => {
     );
   });
 
-  it("returns empty string when conversation creation fails", async () => {
+  it("returns null when conversation creation fails", async () => {
+    // handleIncomingMessage is typed Promise<string | null>; both call sites
+    // (Twilio + Meta webhooks) treat a falsy return identically, so null (not
+    // "") is the real, intentional signal here — there's no conversation to
+    // reply into.
     const deps = makeDeps({ createConversation: vi.fn().mockResolvedValue(null) });
     const result = await handleIncomingMessage(makePayload(), deps);
 
-    expect(result).toBe("");
+    expect(result).toBeNull();
     expect(mockLogError).toHaveBeenCalledWith(
       "twilio-handler",
       "Conversation create failed",
@@ -233,8 +239,8 @@ describe("buildSystemPrompt", () => {
 
   it("includes business hours", () => {
     const prompt = buildSystemPrompt(BUSINESS);
-    expect(prompt).toContain("08:00");
-    expect(prompt).toContain("22:00");
+    expect(prompt).toContain(BUSINESS.open_time);
+    expect(prompt).toContain(BUSINESS.close_time);
   });
 
   it("appends custom_message when present", () => {

@@ -9,43 +9,52 @@
  * These tests mock Supabase so no live DB is required.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // ── Mock Supabase admin client ────────────────────────────────────────────────
 
-const _store = new Map<string, { key: string; expires_at: string }>();
-
-const mockSupabaseAdmin = {
+// NOTE: vi.mock factories are hoisted above all other module-level code, so a
+// plain `const mockSupabaseAdmin = {...}` referenced inside the factory below
+// used to throw "Cannot access 'mockSupabaseAdmin' before initialization" —
+// the factory ran before the const was ever assigned. vi.hoisted() runs the
+// initializer in that same hoisted position so the reference is safe.
+const mockSupabaseAdmin = vi.hoisted(() => ({
   from: vi.fn().mockReturnThis(),
   select: vi.fn().mockReturnThis(),
   insert: vi.fn().mockReturnThis(),
+  update: vi.fn().mockReturnThis(),
   delete: vi.fn().mockReturnThis(),
   lt: vi.fn().mockReturnThis(),
   eq: vi.fn().mockReturnThis(),
-  single: vi.fn(),
-};
+  maybeSingle: vi.fn(),
+}));
 
 vi.mock("@/integrations/supabase/client.server", () => ({
   supabaseAdmin: mockSupabaseAdmin,
 }));
 
+vi.mock("@/lib/server/event-pipeline", () => ({
+  events: { jobDuplicate: vi.fn() },
+}));
+
 // ── Import after mocks ────────────────────────────────────────────────────────
 
-import {
-  acquireIdempotencyKey,
-  releaseIdempotencyKey,
-  pruneIdempotencyKeys,
-} from "@/lib/server/idempotency";
+import { acquireIdempotencyKey, pruneIdempotencyKeys } from "@/lib/server/idempotency";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+// The mock chain methods default to mockReturnThis() so any chain of them
+// resolves to `mockSupabaseAdmin` itself when awaited (destructuring
+// properties like `error`/`data` off of it yields undefined, i.e. "no error").
+// Each helper below overrides just the terminal call of one specific chain
+// with a real resolved value for a single invocation.
 
 function mockKeyNotFound() {
-  mockSupabaseAdmin.single.mockResolvedValueOnce({ data: null, error: { code: "PGRST116" } });
+  mockSupabaseAdmin.maybeSingle.mockResolvedValueOnce({ data: null, error: null });
 }
 
-function mockKeyFound(key: string) {
-  mockSupabaseAdmin.single.mockResolvedValueOnce({
-    data: { key, expires_at: new Date(Date.now() + 60_000).toISOString() },
+function mockKeyFound(status: "success" | "processing", updatedAt = new Date().toISOString()) {
+  mockSupabaseAdmin.maybeSingle.mockResolvedValueOnce({
+    data: { status, updated_at: updatedAt },
     error: null,
   });
 }
@@ -58,105 +67,121 @@ function mockInsertConflict() {
   mockSupabaseAdmin.insert.mockResolvedValueOnce({ error: { code: "23505" } });
 }
 
-function mockDeleteSuccess() {
-  mockSupabaseAdmin.delete.mockResolvedValueOnce({ error: null });
-}
-
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe("acquireIdempotencyKey", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    // Default chain setup — from().select().eq().single() pattern
+    vi.resetAllMocks();
+    // Default chain setup — every intermediate chain call returns `this`;
+    // reset here (not just cleared) so a leftover *Once() queued value from a
+    // previous test can never bleed into the next one and break chaining.
     mockSupabaseAdmin.from.mockReturnThis();
     mockSupabaseAdmin.select.mockReturnThis();
     mockSupabaseAdmin.eq.mockReturnThis();
     mockSupabaseAdmin.lt.mockReturnThis();
     mockSupabaseAdmin.insert.mockReturnThis();
+    mockSupabaseAdmin.update.mockReturnThis();
     mockSupabaseAdmin.delete.mockReturnThis();
   });
 
-  it("returns true when the key does not exist (first acquisition)", async () => {
-    mockKeyNotFound();
+  it("returns alreadySeen:false when the key does not exist (first acquisition)", async () => {
     mockInsertSuccess();
 
-    const result = await acquireIdempotencyKey("send_whatsapp:+2348012345678:abc123");
-    expect(result).toBe(true);
+    const guard = await acquireIdempotencyKey("send_whatsapp:+2348012345678:abc123", "trace-1");
+    expect(guard.alreadySeen).toBe(false);
   });
 
-  it("returns false when the key already exists (duplicate detected)", async () => {
-    mockKeyFound("send_whatsapp:+2348012345678:abc123");
-
-    const result = await acquireIdempotencyKey("send_whatsapp:+2348012345678:abc123");
-    expect(result).toBe(false);
-  });
-
-  it("returns false on insert conflict (race condition — two workers acquired simultaneously)", async () => {
-    mockKeyNotFound();
+  it("returns alreadySeen:true when the key was already marked success (duplicate detected)", async () => {
     mockInsertConflict();
+    mockKeyFound("success");
 
-    const result = await acquireIdempotencyKey("send_payment_link:biz123:conv456:15000");
-    expect(result).toBe(false);
+    const guard = await acquireIdempotencyKey("send_whatsapp:+2348012345678:abc123", "trace-1");
+    expect(guard.alreadySeen).toBe(true);
   });
 
-  it("does not deduplicate log_event jobs (they use unique job ids)", async () => {
-    const key1 = "log_event:job-uuid-1";
-    const key2 = "log_event:job-uuid-2";
+  it("returns alreadySeen:true when another worker holds a fresh 'processing' lock", async () => {
+    mockInsertConflict();
+    mockKeyFound("processing"); // updated_at defaults to "now" — well within the stale threshold
 
-    mockKeyNotFound();
+    const guard = await acquireIdempotencyKey("send_payment_link:biz123:conv456:15000", "trace-1");
+    expect(guard.alreadySeen).toBe(true);
+  });
+
+  it("recovers a stale 'processing' lock (crashed worker) and re-acquires", async () => {
+    const staleUpdatedAt = new Date(Date.now() - 10 * 60 * 1000).toISOString(); // 10 min ago
+    mockInsertConflict();
+    mockKeyFound("processing", staleUpdatedAt);
+    // eq() is called 3 times total: select(...).eq() [chain], then
+    // delete().eq().eq() — only the last of those three resolves the delete.
+    mockSupabaseAdmin.eq
+      .mockReturnValueOnce(mockSupabaseAdmin)
+      .mockReturnValueOnce(mockSupabaseAdmin)
+      .mockResolvedValueOnce({ error: null });
+    mockInsertSuccess(); // re-insert after clearing the stale lock
+
+    const guard = await acquireIdempotencyKey("send_payment_link:biz123:conv456:15000", "trace-1");
+    expect(guard.alreadySeen).toBe(false);
+  });
+
+  it("does not deduplicate log_event jobs across different job ids", async () => {
     mockInsertSuccess();
-    const r1 = await acquireIdempotencyKey(key1);
+    const r1 = await acquireIdempotencyKey("log_event:job-uuid-1", "trace-1");
 
-    mockKeyNotFound();
     mockInsertSuccess();
-    const r2 = await acquireIdempotencyKey(key2);
+    const r2 = await acquireIdempotencyKey("log_event:job-uuid-2", "trace-2");
 
-    expect(r1).toBe(true);
-    expect(r2).toBe(true);
+    expect(r1.alreadySeen).toBe(false);
+    expect(r2.alreadySeen).toBe(false);
   });
 
   it("prevents double payment link for same conversation + amount", async () => {
     const key = "send_payment_link:biz-001:conv-001:5000";
 
     // First acquisition succeeds
-    mockKeyNotFound();
     mockInsertSuccess();
-    expect(await acquireIdempotencyKey(key)).toBe(true);
+    const first = await acquireIdempotencyKey(key, "trace-1");
+    expect(first.alreadySeen).toBe(false);
 
-    // Second acquisition (e.g. Cloudflare retry) is blocked
-    mockKeyFound(key);
-    expect(await acquireIdempotencyKey(key)).toBe(false);
-  });
-});
-
-describe("releaseIdempotencyKey", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockSupabaseAdmin.from.mockReturnThis();
-    mockSupabaseAdmin.delete.mockReturnThis();
-    mockSupabaseAdmin.eq.mockReturnThis();
+    // Second acquisition (e.g. Cloudflare retry) is blocked — the key already
+    // exists; simulate it having been marked success by the first attempt.
+    mockInsertConflict();
+    mockKeyFound("success");
+    const second = await acquireIdempotencyKey(key, "trace-2");
+    expect(second.alreadySeen).toBe(true);
   });
 
-  it("deletes the key so the next retry can re-acquire", async () => {
-    mockDeleteSuccess();
-    await expect(
-      releaseIdempotencyKey("send_whatsapp:+2348012345678:abc123"),
-    ).resolves.not.toThrow();
-    expect(mockSupabaseAdmin.delete).toHaveBeenCalled();
-  });
+  describe("guard.markSuccess / guard.markFailed", () => {
+    it("markSuccess resolves without throwing when the update succeeds", async () => {
+      mockInsertSuccess();
+      const guard = await acquireIdempotencyKey("send_whatsapp:+234:abc", "trace-1");
 
-  it("does not throw if the key does not exist (idempotent release)", async () => {
-    mockSupabaseAdmin.delete.mockResolvedValueOnce({ error: { code: "PGRST116" } });
-    await expect(releaseIdempotencyKey("nonexistent-key")).resolves.not.toThrow();
+      mockSupabaseAdmin.eq.mockResolvedValueOnce({ error: null });
+      await expect(guard.markSuccess()).resolves.not.toThrow();
+    });
+
+    it("markSuccess throws if the DB update reports an error (avoids a silently stuck lock)", async () => {
+      mockInsertSuccess();
+      const guard = await acquireIdempotencyKey("send_whatsapp:+234:abc", "trace-1");
+
+      mockSupabaseAdmin.eq.mockResolvedValueOnce({ error: { message: "db down" } });
+      await expect(guard.markSuccess()).rejects.toThrow(/db down/);
+    });
+
+    it("markFailed deletes the row so the next retry can re-acquire", async () => {
+      mockInsertSuccess();
+      const guard = await acquireIdempotencyKey("send_whatsapp:+234:abc", "trace-1");
+
+      await expect(guard.markFailed("network error")).resolves.not.toThrow();
+      expect(mockSupabaseAdmin.delete).toHaveBeenCalled();
+    });
   });
 });
 
 describe("pruneIdempotencyKeys", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
     mockSupabaseAdmin.from.mockReturnThis();
     mockSupabaseAdmin.delete.mockReturnThis();
-    mockSupabaseAdmin.lt.mockReturnThis();
   });
 
   it("deletes rows with expires_at in the past", async () => {

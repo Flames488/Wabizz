@@ -15,8 +15,12 @@
 
 import { describe, it, expect } from "vitest";
 import { createHmac } from "crypto";
-import { verifyTwilioSignature } from "../../routes/api.public.twilio-webhook";
-import { verifyPaystackSignature } from "../../routes/api.public.paystack-webhook";
+// These used to live inline in the route files and were later extracted
+// into dedicated .server.ts crypto modules (see the "lives in ..." comments
+// left behind in the route files) — this test wasn't updated to follow, so
+// it was importing names the route modules no longer export.
+import { verifyTwilioSignature } from "../lib/server/twilio-crypto.server";
+import { verifyPaystackSignature } from "../lib/server/paystack-crypto.server";
 
 // ── Helper to build a valid Twilio signature ─────────────────────────────────
 

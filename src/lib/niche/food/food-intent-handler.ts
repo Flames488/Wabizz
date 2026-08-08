@@ -71,20 +71,27 @@ export async function handleFoodMessage(payload: FoodHandlerPayload): Promise<st
     }
 
     // ── Fresh intent detection ─────────────────────────────────────────────
+    // BUG FIX: CANCEL and STATUS must both be checked before ORDER, and
+    // CANCEL before STATUS. ORDER's pattern matches the bare word "order" —
+    // present in "where is my order?" and "cancel my order" — so with ORDER
+    // checked first it always won, silently swallowing status/cancel
+    // requests into "show the menu, what would you like to order?" instead
+    // of answering them. Likewise STATUS's "my order" alternative matches
+    // "cancel my order", so CANCEL has to come first or it gets shadowed too.
     if (INTENTS.MENU.test(message)) {
       return showMenu(payload);
     }
 
-    if (INTENTS.ORDER.test(message)) {
-      return handleOrderIntent(payload);
+    if (INTENTS.CANCEL.test(message)) {
+      return handleCancelIntent(payload);
     }
 
     if (INTENTS.STATUS.test(message)) {
       return checkOrderStatus(payload);
     }
 
-    if (INTENTS.CANCEL.test(message)) {
-      return handleCancelIntent(payload);
+    if (INTENTS.ORDER.test(message)) {
+      return handleOrderIntent(payload);
     }
 
     if (INTENTS.DELIVERY_FAQ.test(message)) {

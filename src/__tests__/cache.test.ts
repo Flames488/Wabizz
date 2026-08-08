@@ -9,7 +9,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // We import the actual cache module — in-process store, KV binding undefined
-import { cache, CacheKeys, CacheTTL } from "../../lib/cache";
+import { cache, CacheKeys, CacheTTL } from "../lib/cache";
 
 describe("cache — in-process store", () => {
   beforeEach(() => {
