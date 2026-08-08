@@ -32,7 +32,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getPaystackSecretKey } from "@/lib/keys.functions";
 import { isBankTransfer, buildBankTransferMessage } from "@/lib/paystack";
 import { logError } from "@/lib/server-logger";
-import { fetchWithRetry } from "@/lib/server/request-timeout";
+import { fetchWithRetry } from "@/lib/request-timeout";
 
 /**
  * Generate a real Paystack checkout URL for an order, using the business's

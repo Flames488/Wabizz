@@ -8,7 +8,7 @@ import { handlePaystackEvent } from "@/lib/server/twilio-handler";
 import type { PaystackDeps } from "@/lib/server/twilio-handler";
 import { cache, CacheKeys } from "@/lib/cache";
 import { applySecurityHeaders } from "@/lib/server/security-headers";
-import { withRequestTimeout, fetchWithRetry } from "@/lib/server/request-timeout";
+import { withRequestTimeout, fetchWithRetry } from "@/lib/request-timeout";
 import "@/lib/server-init"; // bootstrap graceful shutdown + process error handlers
 import { withRequestTracking } from "@/lib/server/request-tracker";
 import { acquireWebhookEvent } from "@/lib/server/webhook-event-store";

@@ -15,7 +15,7 @@ import { acquireIdempotencyKey } from "@/lib/server/idempotency";
 import { checkRateLimit, checkIpRateLimit } from "@/lib/rate-limiter";
 import { matchAutomationRule } from "@/lib/automation.functions";
 import { isBankTransfer, parseBankTransferKey } from "@/lib/paystack";
-import { fetchWithRetry } from "@/lib/server/request-timeout";
+import { fetchWithRetry } from "@/lib/request-timeout";
 import { applySecurityHeaders } from "@/lib/server/security-headers";
 import { events } from "@/lib/server/event-pipeline";
 

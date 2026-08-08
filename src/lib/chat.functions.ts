@@ -11,7 +11,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { logError } from "@/lib/server-logger";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { fetchWithRetry } from "@/lib/server/request-timeout";
+import { fetchWithRetry } from "@/lib/request-timeout";
 
 const ChatInput = z.object({
   businessName: z.string().min(1).max(200),

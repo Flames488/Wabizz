@@ -19,7 +19,7 @@ import { logError, logInfo } from "@/lib/server-logger";
 import { sendTrialStartedConfirmation } from "@/lib/server/reminders";
 import { withErrorHandling, WabizzError } from "@/lib/server/error-handler";
 import { cache, CacheKeys } from "@/lib/cache";
-import { fetchWithRetry } from "@/lib/server/request-timeout";
+import { fetchWithRetry } from "@/lib/request-timeout";
 
 const PlanIdSchema = z.enum(["starter", "growth", "pro"]);
 
