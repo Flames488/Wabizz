@@ -44,7 +44,7 @@ export type SaveHospitalConfigInput = z.infer<typeof SaveHospitalConfigInput>;
  */
 export const saveHospitalConfig = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator(SaveHospitalConfigInput)
+  .inputValidator(SaveHospitalConfigInput)
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
@@ -52,7 +52,7 @@ export const saveHospitalConfig = createServerFn({ method: "POST" })
     const { data: biz, error: bizError } = await supabase
       .from("businesses")
       .select("id")
-      .eq("user_id", userId)
+      .eq("owner_id", userId)
       .single();
 
     if (bizError || !biz) {
@@ -93,14 +93,14 @@ export type SaveFoodTraderConfigInput = z.infer<typeof SaveFoodTraderConfigInput
 
 export const saveFoodTraderConfig = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator(SaveFoodTraderConfigInput)
+  .inputValidator(SaveFoodTraderConfigInput)
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
     const { data: biz, error: bizError } = await supabase
       .from("businesses")
       .select("id")
-      .eq("user_id", userId)
+      .eq("owner_id", userId)
       .single();
 
     if (bizError || !biz) {
@@ -138,14 +138,14 @@ export type ToggleNicheInput = z.infer<typeof ToggleNicheInput>;
  */
 export const toggleNicheActive = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator(ToggleNicheInput)
+  .inputValidator(ToggleNicheInput)
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
     const { data: biz, error: bizError } = await supabase
       .from("businesses")
       .select("id")
-      .eq("user_id", userId)
+      .eq("owner_id", userId)
       .single();
 
     if (bizError || !biz) {
