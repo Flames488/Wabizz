@@ -486,10 +486,11 @@ export async function handleIncomingMessage(
     systemPrompt += buildFoodPromptAddition(nicheConfigs.food_trader.config);
   }
 
+  // BUG FIX: this used to `return null` here when the AI call failed, which
+  // skipped the fallback below entirely — real WhatsApp customers got no
+  // reply at all (and nothing was persisted) whenever Anthropic errored.
+  // Fall through so the fallback message below is always sent instead.
   const aiReply = await ai.complete({ systemPrompt, messages: history, requestId });
-  if (aiReply === null) {
-    return null;
-  }
   const reply = aiReply ?? "Thanks for your message! We'll get back to you shortly.";
 
   // Detect order confirmation signal in AI reply

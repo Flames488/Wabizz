@@ -1,0 +1,32 @@
+{
+  "name": "Wabizz AI — WhatsApp Business Assistant",
+  "short_name": "Wabizz",
+  "description": "AI-powered WhatsApp assistant for Nigerian small businesses. Handle orders, reply customers, generate payment links — 24/7.",
+  "start_url": "/dashboard",
+  "id": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f4f9f5",
+  "theme_color": "#16a34a",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

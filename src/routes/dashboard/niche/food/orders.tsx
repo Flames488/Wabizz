@@ -107,7 +107,7 @@ function OrdersDashboard() {
       const { data: biz } = await supabase
         .from("businesses")
         .select("id")
-        .eq("user_id", session.user.id)
+        .eq("owner_id", session.user.id)
         .single();
       if (!biz) {
         setLoading(false);

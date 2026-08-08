@@ -130,8 +130,8 @@ function Simulator() {
     }
 
     // Bank transfer: server returns a WhatsApp message with account details
-    if ((res as { bankTransferMessage?: string }).bankTransferMessage) {
-      const msg2 = (res as { bankTransferMessage: string }).bankTransferMessage;
+    if ("bankTransferMessage" in res && res.bankTransferMessage) {
+      const msg2 = res.bankTransferMessage;
       setMessages((all) =>
         all.map((m) => (m.id === msg.id ? { ...m, bankTransferMessage: msg2 } : m)),
       );

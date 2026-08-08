@@ -214,7 +214,7 @@ async function handleRetryClaudeReply(job: RetryClaudeReplyJob, env?: WorkerEnv)
   }
 
   const { handleIncomingMessage } = await import("@/lib/server/twilio-handler");
-  const { fetchWithRetry } = await import("@/lib/server/request-timeout");
+  const { fetchWithRetry } = await import("@/lib/request-timeout");
 
   // Build minimal AiDeps for retry
   const ai = {

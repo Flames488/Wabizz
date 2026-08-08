@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { checkRateLimit, checkIpRateLimit } from "../../lib/rate-limiter";
+import { checkRateLimit, checkIpRateLimit } from "../lib/rate-limiter";
 
 // ── Rate limiter — in-memory backend ─────────────────────────────────────────
 

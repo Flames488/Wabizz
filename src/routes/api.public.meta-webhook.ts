@@ -15,7 +15,7 @@ import { acquireIdempotencyKey } from "@/lib/server/idempotency";
 import { checkRateLimit, checkIpRateLimit } from "@/lib/rate-limiter";
 import { matchAutomationRule } from "@/lib/automation.functions";
 import { isBankTransfer, parseBankTransferKey } from "@/lib/paystack";
-import { fetchWithRetry } from "@/lib/server/request-timeout";
+import { fetchWithRetry } from "@/lib/request-timeout";
 import { applySecurityHeaders } from "@/lib/server/security-headers";
 import { events } from "@/lib/server/event-pipeline";
 
@@ -270,6 +270,39 @@ async function processTextMessage(args: {
         requestId,
         wa.business_id,
       );
+      return;
+    }
+
+    // BUG FIX (parity with the Twilio webhook, which already had this):
+    // action_type === "tag" automation rules were never handled here at all,
+    // so they matched, fell all the way through this block, and hit the
+    // generic handleIncomingMessage/AI-reply path below — tags were never
+    // applied, and the customer got an unrelated AI reply instead of silence.
+    if (automationMatch.actionType === "tag" && automationMatch.addTags?.length > 0) {
+      // Upsert contact then merge tags via DB function (avoids overwrite race)
+      void supabaseAdmin
+        .from("contacts")
+        .upsert(
+          {
+            business_id: wa.business_id,
+            phone: customerNumber,
+            name: customerName,
+            tags: automationMatch.addTags,
+            source: "chat",
+          },
+          { onConflict: "business_id,phone", ignoreDuplicates: false },
+        )
+        .then(async () => {
+          await supabaseAdmin.rpc("merge_contact_tags", {
+            p_business_id: wa.business_id,
+            p_phone: customerNumber,
+            p_add_tags: automationMatch.addTags,
+          });
+        })
+        .catch(() => {});
+
+      // Hard stop after tagging — same reasoning as the Twilio path: without
+      // this, execution falls through to the AI reply below.
       return;
     }
   }

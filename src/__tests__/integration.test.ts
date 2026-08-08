@@ -15,22 +15,37 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { handleIncomingMessage, handlePaystackEvent } from "../../lib/server/twilio-handler";
+import { handleIncomingMessage, handlePaystackEvent } from "../lib/server/twilio-handler";
 import type {
   DbDeps,
   AiDeps,
   PaystackDeps,
   BusinessProfile,
-} from "../../lib/server/twilio-handler";
+} from "../lib/server/twilio-handler";
 
-vi.mock("../../lib/server-logger", () => ({
+vi.mock("../lib/server-logger", () => ({
   logError: vi.fn().mockResolvedValue(undefined),
   logInfo: vi.fn().mockResolvedValue(undefined),
   logWarn: vi.fn().mockResolvedValue(undefined),
   logFatal: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { logError } from "../../lib/server-logger";
+// This file's docstring claims supabaseAdmin is mocked "at the module level
+// — no real DB or network calls", but no such mock actually existed: any
+// code reached by handleIncomingMessage that touches supabaseAdmin directly
+// (e.g. getNicheConfigs in niche-loader.ts) hit the real lazy-init Proxy,
+// which throws when SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY aren't set in the
+// test environment. Mock it so the doc comment's claim is actually true.
+vi.mock("../integrations/supabase/client.server", () => ({
+  supabaseAdmin: {
+    from: vi.fn().mockReturnThis(),
+    select: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockReturnThis(),
+    maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+  },
+}));
+
+import { logError } from "../lib/server-logger";
 const mockLogError = vi.mocked(logError);
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -42,8 +57,10 @@ const BUSINESS: BusinessProfile = {
   name: "TechHub Nigeria",
   type: "electronics",
   products_list: "iPhone 15 ₦900,000\nSamsung S24 ₦700,000\nAirPods Pro ₦150,000",
-  open_time: "09:00",
-  close_time: "18:00",
+  // Always-open window so these tests don't flake depending on the real
+  // wall-clock time in Africa/Lagos when the suite happens to run.
+  open_time: "00:00",
+  close_time: "23:59",
   tone: "Professional",
   custom_message: "Always mention our 1-year warranty.",
 };
@@ -163,8 +180,16 @@ describe("Integration: AI failure resilience", () => {
 
     const ai: AiDeps = { complete: vi.fn().mockResolvedValue(null) };
 
+    // Deliberately not "Hello"/"hi"/etc — those match the GREET auto-reply
+    // intent and short-circuit before the AI is ever called, which used to
+    // make this test pass without actually exercising the AI-null fallback.
     const result = await handleIncomingMessage(
-      { business: BUSINESS, customerNumber: "+234", customerName: null, text: "Hello" },
+      {
+        business: BUSINESS,
+        customerNumber: "+234",
+        customerName: null,
+        text: "Do you offer installment payments?",
+      },
       { db, ai, requestId: REQUEST_ID },
     );
 

@@ -238,7 +238,8 @@ describe("handleFoodMessage — intent routing", () => {
     });
 
     const reply = await handleFoodMessage({ ...BASE_PAYLOAD, message: "where is my order?" });
-    expect(reply).toContain("order-ab"); // first 8 chars of ID
+    // checkOrderStatus uppercases the id prefix for display (ORDER-AB) — match case-insensitively.
+    expect(reply?.toLowerCase()).toContain("order-ab"); // first 8 chars of ID
     expect(reply).toContain("preparing");
   });
 

@@ -23,7 +23,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { cache } from "@/lib/cache";
 import { applySecurityHeaders } from "@/lib/server/security-headers";
-import { withTimeout } from "@/lib/server/request-timeout";
+import { withTimeout } from "@/lib/request-timeout";
 import { getQueueStats } from "@/lib/queue";
 import { listDlqJobs } from "@/lib/dead-letter-queue";
 import { getCircuitStates } from "@/lib/server/circuit-breaker/circuit-breaker";

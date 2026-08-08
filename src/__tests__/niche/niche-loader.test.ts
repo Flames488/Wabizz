@@ -9,18 +9,22 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // ── Mock supabaseAdmin before importing loader ─────────────────────────────────
 
-const mockSelect = vi.fn();
-const mockEq = vi.fn();
-const mockSingle = vi.fn();
-const mockUpdate = vi.fn();
-const mockUpsert = vi.fn();
-const mockFrom = vi.fn();
-const mockRpc = vi.fn();
-
-const supabaseChain = {
-  from: mockFrom,
-  rpc: mockRpc,
-};
+// vi.mock factories are hoisted above all other module-level code, so the
+// mocks referenced inside the factory below must be created via vi.hoisted()
+// — a plain top-level const here throws "Cannot access ... before
+// initialization" because the factory would run before the const existed.
+const { mockSelect, mockEq, mockSingle, mockUpdate, mockUpsert, mockFrom, mockRpc, supabaseChain } =
+  vi.hoisted(() => {
+    const mockSelect = vi.fn();
+    const mockEq = vi.fn();
+    const mockSingle = vi.fn();
+    const mockUpdate = vi.fn();
+    const mockUpsert = vi.fn();
+    const mockFrom = vi.fn();
+    const mockRpc = vi.fn();
+    const supabaseChain = { from: mockFrom, rpc: mockRpc };
+    return { mockSelect, mockEq, mockSingle, mockUpdate, mockUpsert, mockFrom, mockRpc, supabaseChain };
+  });
 
 vi.mock("@/integrations/supabase/client.server", () => ({
   supabaseAdmin: supabaseChain,
@@ -82,7 +86,7 @@ describe("getNicheConfigs", () => {
   it("returns hospital config when hospital niche row is active", async () => {
     const hospitalRow = {
       id: "row-1",
-      business_id: "business-123",
+      business_id: "business-hosp-123",
       niche: "hospital",
       config: {
         vitar_api_url: "https://clinic.example.com",
@@ -102,7 +106,7 @@ describe("getNicheConfigs", () => {
 
     mockRpc.mockResolvedValue({ data: "secret-key-value", error: null });
 
-    const result = await getNicheConfigs("business-123");
+    const result = await getNicheConfigs("business-hosp-123");
     expect(result.hospital).toBeDefined();
     expect(result.hospital?.is_active).toBe(true);
     expect(result.hospital?.config.clinic_name).toBe("Test Clinic");

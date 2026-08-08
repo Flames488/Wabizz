@@ -15,7 +15,7 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { logError, logInfo } from "@/lib/server-logger";
 import { getWhatsAppApiKey } from "@/lib/keys.functions";
-import { fetchWithRetry } from "@/lib/server/request-timeout";
+import { fetchWithRetry } from "@/lib/request-timeout";
 
 const requestId = () => crypto.randomUUID();
 

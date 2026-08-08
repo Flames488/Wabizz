@@ -26,7 +26,7 @@ import { isBankTransfer, parseBankTransferKey } from "@/lib/paystack";
 import type { DbDeps, AiDeps, MessageRecord } from "@/lib/server/twilio-handler";
 import { cache, CacheKeys, CacheTTL } from "@/lib/cache";
 import { applySecurityHeaders } from "@/lib/server/security-headers";
-import { withRequestTimeout, fetchWithRetry } from "@/lib/server/request-timeout";
+import { withRequestTimeout, fetchWithRetry } from "@/lib/request-timeout";
 import "@/lib/server-init"; // bootstrap graceful shutdown + process error handlers
 import { withRequestTracking } from "@/lib/server/request-tracker";
 import { events } from "@/lib/server/event-pipeline";

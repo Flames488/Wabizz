@@ -11,15 +11,15 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // ── Mock server-logger ───────────────────────────────────────────────────────
-vi.mock("../../lib/server-logger", () => ({
+vi.mock("../lib/server-logger", () => ({
   logError: vi.fn().mockResolvedValue(undefined),
   logFatal: vi.fn().mockResolvedValue(undefined),
   logInfo: vi.fn().mockResolvedValue(undefined),
   logWarn: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { logError, logFatal } from "../../lib/server-logger";
-import { WabizzError, withErrorHandling } from "../../lib/server/error-handler";
+import { logError, logFatal } from "../lib/server-logger";
+import { WabizzError, withErrorHandling } from "../lib/server/error-handler";
 
 const mockLogError = vi.mocked(logError);
 const mockLogFatal = vi.mocked(logFatal);
@@ -160,7 +160,7 @@ import {
   PhoneSchema,
   TimeSchema,
   PlanIdSchema,
-} from "../../lib/server/validation";
+} from "../lib/server/validation";
 
 describe("validateInput", () => {
   it("returns parsed value on success", () => {

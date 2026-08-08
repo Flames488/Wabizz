@@ -34,18 +34,18 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   handleSendCampaignBatch,
   handleSendAutomationStep,
-} from "../../lib/server/worker/campaign-processor";
-import type { SendCampaignBatchJob, SendAutomationStepJob } from "../../lib/queue";
+} from "../lib/server/worker/campaign-processor";
+import type { SendCampaignBatchJob, SendAutomationStepJob } from "../lib/queue";
 
 // ── Mock logger ───────────────────────────────────────────────────────────────
-vi.mock("../../lib/server-logger", () => ({
+vi.mock("../lib/server-logger", () => ({
   logError: vi.fn().mockResolvedValue(undefined),
   logInfo: vi.fn().mockResolvedValue(undefined),
   logWarn: vi.fn().mockResolvedValue(undefined),
   logFatal: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { logError, logInfo, logWarn } from "../../lib/server-logger";
+import { logError, logInfo, logWarn } from "../lib/server-logger";
 const mockLogError = vi.mocked(logError);
 const mockLogInfo = vi.mocked(logInfo);
 const mockLogWarn = vi.mocked(logWarn);
@@ -71,27 +71,27 @@ function makeChain(resolvedWith: unknown) {
 }
 
 // We need per-call control, so we mock at module level with a factory
-vi.mock("../../integrations/supabase/client.server", () => ({
+vi.mock("../integrations/supabase/client.server", () => ({
   supabaseAdmin: {
     from: vi.fn(),
     rpc: vi.fn().mockResolvedValue({ error: null }),
   },
 }));
 
-import { supabaseAdmin } from "../../integrations/supabase/client.server";
+import { supabaseAdmin } from "../integrations/supabase/client.server";
 const mockFrom = vi.mocked(supabaseAdmin.from);
 const mockRpcFn = vi.mocked(supabaseAdmin.rpc);
 
 // ── Mock getWhatsAppApiKey ────────────────────────────────────────────────────
-vi.mock("../../lib/server/keys.functions", () => ({
+vi.mock("../lib/keys.functions", () => ({
   getWhatsAppApiKey: vi.fn().mockResolvedValue("test-api-key-123"),
 }));
 
-import { getWhatsAppApiKey } from "../../lib/server/keys.functions";
+import { getWhatsAppApiKey } from "../lib/keys.functions";
 const mockGetApiKey = vi.mocked(getWhatsAppApiKey);
 
 // ── Mock circuit breaker ──────────────────────────────────────────────────────
-vi.mock("../../lib/server/circuit-breaker/circuit-breaker", () => ({
+vi.mock("../lib/server/circuit-breaker/circuit-breaker", () => ({
   circuitBreaker: vi
     .fn()
     .mockImplementation((_service: string, fn: () => Promise<unknown>) => fn()),
@@ -112,12 +112,12 @@ const mockAcquire = vi.fn().mockResolvedValue({
   markFailed: mockMarkFailed,
 });
 
-vi.mock("../../lib/server/idempotency", () => ({
+vi.mock("../lib/server/idempotency", () => ({
   acquireIdempotencyKey: (...args: unknown[]) => mockAcquire(...args),
 }));
 
 // ── Mock event pipeline ───────────────────────────────────────────────────────
-vi.mock("../../lib/server/event-pipeline", () => ({
+vi.mock("../lib/server/event-pipeline", () => ({
   events: {
     apiFailed: vi.fn(),
     apiSuccess: vi.fn(),
@@ -130,12 +130,12 @@ vi.mock("../../lib/server/event-pipeline", () => ({
 }));
 
 // ── Mock admin metrics ────────────────────────────────────────────────────────
-vi.mock("../../lib/server/admin/metrics", () => ({
+vi.mock("../lib/server/admin/metrics", () => ({
   recordApiCall: vi.fn().mockResolvedValue(undefined),
 }));
 
 // ── Mock whatsapp helper ──────────────────────────────────────────────────────
-vi.mock("../../lib/whatsapp", () => ({
+vi.mock("../lib/whatsapp", () => ({
   buildTextMessageBody: (to: string, text: string) => ({ to, text }),
   DIALOG_API_BASE: "https://waba.360dialog.io/v1",
 }));
