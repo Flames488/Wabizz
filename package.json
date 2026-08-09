@@ -23,7 +23,7 @@
     "backup": "bash scripts/backup-supabase.sh",
     "pre-launch": "tsx scripts/pre-launch-check.ts",
     "pre-launch:v2": "tsx scripts/pre-launch-check-v2.ts",
-    "deploy": "bun run build && bunx wrangler deploy",
+    "deploy": "bun run build && bun run pre-launch && bunx wrangler deploy",
     "load-test:smoke": "k6 run --scenario smoke --env BASE_URL=${BASE_URL:-http://localhost:5173} load-tests/k6-webhook.js",
     "load-test:smoke:advanced": "k6 run --scenario smoke --env BASE_URL=${BASE_URL:-http://localhost:5173} load-tests/k6-advanced.js",
     "load-test:ramp1000": "k6 run --scenario ramp1000 --env BASE_URL=${BASE_URL:-http://localhost:5173} load-tests/k6-webhook.js",
@@ -40,7 +40,7 @@
     "e2e:install": "playwright install --with-deps chromium",
     "e2e:report": "playwright show-report",
     "worker:dev": "wrangler dev --local",
-    "worker:deploy": "bun run pre-launch && wrangler deploy",
+    "worker:deploy": "bun run build && bun run pre-launch && wrangler deploy",
     "pre-launch:local": "tsx scripts/pre-launch-check.ts --local"
   },
   "dependencies": {

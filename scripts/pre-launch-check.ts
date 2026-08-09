@@ -140,6 +140,38 @@ check(
   },
 );
 
+check("Client bundle has a real Supabase URL baked in", true, () => {
+  // VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY are inlined into the client
+  // JS at `vite build` time. Setting them via `wrangler secret put` only affects
+  // server-side code — it does nothing for an already-built client bundle. If the
+  // build ran without those vars set, the Supabase client throws on every page
+  // load in production while looking completely fine in this repo's source.
+  const assetsDir = join(ROOT, "dist", "client", "assets");
+  if (!existsSync(assetsDir)) {
+    return {
+      passed: false,
+      message: "dist/client/assets not found — nothing has been built yet",
+      fix: "Run `bun run build` before deploying.",
+    };
+  }
+
+  const jsFiles = readdirSync(assetsDir).filter((file) => file.endsWith(".js"));
+  const hasSupabaseUrl = jsFiles.some((file) =>
+    /https:\/\/[a-z0-9-]+\.supabase\.co/.test(readFileSync(join(assetsDir, file), "utf8")),
+  );
+
+  if (!hasSupabaseUrl) {
+    return {
+      passed: false,
+      message:
+        "No supabase.co URL found in any built client asset — VITE_SUPABASE_URL was empty at build time",
+      fix: "Ensure VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY are set in .env.local (or the build shell's env), then re-run `bun run build`.",
+    };
+  }
+
+  return { passed: true, message: "Built client bundle contains a real Supabase project URL" };
+});
+
 check("ADMIN_JWT_SECRET is set", true, () => {
   // Check .env.local or .env if present
   const envPaths = [join(ROOT, ".env.local"), join(ROOT, ".env")];
