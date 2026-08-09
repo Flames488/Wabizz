@@ -45,7 +45,7 @@ wrangler queues create wabizz-dlq
 wrangler secret put SUPABASE_URL
 wrangler secret put SUPABASE_SERVICE_ROLE_KEY
 wrangler secret put SUPABASE_PUBLISHABLE_KEY
-wrangler secret put ANTHROPIC_API_KEY
+wrangler secret put GROQ_API_KEY
 wrangler secret put TWILIO_AUTH_TOKEN
 wrangler secret put TWILIO_ACCOUNT_SID
 wrangler secret put TWILIO_API_KEY_SID

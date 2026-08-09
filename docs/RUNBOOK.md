@@ -31,7 +31,7 @@ Key columns:
 
 | `last_error` contains           | Root cause                                             | Action                                                                                                                    |
 | ------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
-| `429` / `rate limit`            | Anthropic rate limit exhausted                         | Check Anthropic usage dashboard → [console.anthropic.com](https://console.anthropic.com) → request increase if persistent |
+| `429` / `rate limit`            | Groq rate limit exhausted                              | Check Groq usage dashboard → [console.groq.com](https://console.groq.com) → request increase if persistent               |
 | `ECONNREFUSED` / `fetch failed` | External service unreachable (Twilio, Paystack, Vitar) | Check circuit breaker status (section 2), check service status pages                                                      |
 | `timeout` / `AbortError`        | Service responded too slowly                           | Usually transient — replay the job                                                                                        |
 | `Invalid signature`             | Webhook replay with wrong credentials                  | Investigate for replay attack; do NOT re-enqueue                                                                          |
@@ -107,7 +107,7 @@ ORDER BY last_failure_at DESC;
 | ---------- | -------------------------------------------------------- |
 | Twilio     | [status.twilio.com](https://status.twilio.com)           |
 | Paystack   | [status.paystack.com](https://status.paystack.com)       |
-| Anthropic  | [status.anthropic.com](https://status.anthropic.com)     |
+| Groq       | [groqstatus.com](https://groqstatus.com)                 |
 | Supabase   | [status.supabase.com](https://status.supabase.com)       |
 | Cloudflare | [cloudflarestatus.com](https://www.cloudflarestatus.com) |
 
@@ -203,15 +203,16 @@ WHERE service = 'vitar';
 
 ---
 
-## 4. Claude Rate Limit (Anthropic 429)
+## 4. Groq Rate Limit (429)
 
 **Alert fires when:** The `anthropic` circuit breaker trips OR when `retry_claude_reply`
-jobs appear in the DLQ in volume.
+jobs appear in the DLQ in volume. (Breaker/queue names predate the Groq migration —
+they still refer to the AI reply path, now backed by Groq.)
 
 ### Step 1 — Check current usage
 
-Go to [console.anthropic.com](https://console.anthropic.com) → **Usage** tab.
-Look for spikes in requests per minute on `claude-haiku-4-5-20251001`.
+Go to [console.groq.com](https://console.groq.com) → **Usage** tab.
+Look for spikes in requests per minute on `llama-3.3-70b-versatile`.
 
 ### Step 2 — What the system does automatically
 
@@ -230,19 +231,18 @@ The `retry_claude_reply` job re-runs the full AI flow. By the time it fires
 
 If 429s are persistent (> 5 minutes):
 
-1. Go to [console.anthropic.com](https://console.anthropic.com) → **Limits**
-2. Click **Request limit increase**
-3. Fill in: current RPM, target RPM, and use case (WhatsApp AI automation)
-4. Anthropic typically responds within 1–2 business days
+1. Go to [console.groq.com/settings/limits](https://console.groq.com/settings/limits)
+2. Request a higher tier / limit increase, or contact Groq support
+3. Include: current RPM, target RPM, and use case (WhatsApp AI automation)
 
-### Step 4 — Emergency: switch to a lower model
+### Step 4 — Emergency: switch to a lower/faster model
 
 If rate limits are causing sustained customer impact:
 
 ```bash
-# In wrangler secret or .env — temporarily switch to a faster/cheaper model
-wrangler secret put ANTHROPIC_MODEL
-# Enter: claude-haiku-4-5-20251001 (already the fastest) or claude-3-5-haiku-20241022
+# In wrangler secret or .env — temporarily switch model
+wrangler secret put GROQ_MODEL
+# Enter an alternate Groq-hosted model, e.g. llama-3.1-8b-instant
 ```
 
 Alternatively, reduce `max_tokens` from 1024 to 512 in `buildAiDeps` to lower
@@ -315,7 +315,7 @@ and keep direct PostgreSQL access restricted to operational tooling.
 | ------------------------------ | -------------------------------------------- | ------------------- |
 | DLQ job                        | Check `last_error` → replay if safe          | < 5 min             |
 | Circuit OPEN (Twilio/Paystack) | Check status page → wait for auto-recovery   | 1–5 min             |
-| Circuit OPEN (Anthropic)       | Check usage dashboard → retry jobs auto-fire | 1–2 min             |
+| Circuit OPEN (Groq)            | Check usage dashboard → retry jobs auto-fire | 1–2 min             |
 | Vitar down                     | SSH → `docker compose restart api`           | 2–5 min             |
 | 429 sustained                  | Request rate limit increase                  | 1–2 business days   |
 | Bad Supabase URL               | Set HTTPS project URL → `wrangler deploy`    | < 2 min             |

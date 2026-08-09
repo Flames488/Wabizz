@@ -58,8 +58,12 @@ function _b64url(obj: unknown): string {
 }
 
 // ── bcrypt via native crypto (PBKDF2 as bcrypt substitute) ───────────────────
-// True bcrypt requires a native module. We use PBKDF2-SHA256 (600k iterations)
-// which is NIST-approved and equivalent in practical security for this use case.
+// True bcrypt requires a native module. We use PBKDF2-SHA256. Cloudflare Workers'
+// crypto.subtle hard-caps PBKDF2 at 100,000 iterations (deriveBits throws
+// NotSupportedError above that) — this is Workers' ceiling, not a security choice;
+// on Node the NIST-recommended 600k+ would be preferable, but this code must run
+// in the Workers runtime.
+const PBKDF2_ITERATIONS = 100_000;
 
 async function _hashPassword(password: string): Promise<string> {
   const enc = new TextEncoder();
@@ -71,7 +75,7 @@ async function _hashPassword(password: string): Promise<string> {
     "deriveBits",
   ]);
   const bits = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", hash: "SHA-256", salt, iterations: 600_000 },
+    { name: "PBKDF2", hash: "SHA-256", salt, iterations: PBKDF2_ITERATIONS },
     key,
     256,
   );
@@ -90,7 +94,7 @@ async function _verifyPassword(password: string, stored: string): Promise<boolea
     "deriveBits",
   ]);
   const bits = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", hash: "SHA-256", salt, iterations: 600_000 },
+    { name: "PBKDF2", hash: "SHA-256", salt, iterations: PBKDF2_ITERATIONS },
     key,
     256,
   );

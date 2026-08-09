@@ -53,7 +53,7 @@ const required: [string, string][] = [
   ["SUPABASE_URL", "Supabase project URL"],
   ["SUPABASE_PUBLISHABLE_KEY", "Supabase anon key"],
   ["SUPABASE_SERVICE_ROLE_KEY", "Supabase service role key (SERVER ONLY)"],
-  ["ANTHROPIC_API_KEY", "Anthropic API key for AI features"],
+  ["GROQ_API_KEY", "Groq API key for AI features"],
   ["TWILIO_ACCOUNT_SID", "Twilio account SID"],
   ["TWILIO_AUTH_TOKEN", "Twilio auth token"],
   ["WABIZZ_PAYSTACK_SECRET_KEY", "Paystack secret key"],
@@ -161,9 +161,9 @@ if (sentryDsn && !sentryDsn.startsWith("https://")) {
   ok("SENTRY_DSN format looks correct");
 }
 
-const anthropicKey = env.ANTHROPIC_API_KEY ?? "";
-if (anthropicKey && !anthropicKey.startsWith("sk-ant-")) {
-  warn("ANTHROPIC_API_KEY doesn't look like an Anthropic key (expected sk-ant-...)");
+const groqKey = env.GROQ_API_KEY ?? "";
+if (groqKey && !groqKey.startsWith("gsk_")) {
+  warn("GROQ_API_KEY doesn't look like a Groq key (expected gsk_...)");
 }
 
 // ── 5. App URL check ──────────────────────────────────────────────────────────

@@ -2,7 +2,7 @@
 
 Wabizz is an AI-powered business automation platform that helps Nigerian businesses automate their daily operations — responding to customers, managing orders, collecting payments — all through WhatsApp. Businesses onboard in minutes, connect their Paystack and Twilio accounts, and immediately start handling customer conversations and orders automatically with zero manual effort.
 
-**Stack:** TanStack Start · Bun · Supabase · Cloudflare Workers · Paystack · Twilio / 360dialog · Anthropic Claude
+**Stack:** TanStack Start · Bun · Supabase · Cloudflare Workers · Paystack · Twilio / 360dialog · Groq
 
 ---
 
@@ -34,7 +34,7 @@ Twilio / 360dialog
 Wabizz Server (TanStack Start / Cloudflare Workers)
      ├── Rate limiter (KV or Upstash Redis)
      ├── Twilio signature verification (HMAC)
-     ├── Anthropic Claude (AI intent + reply)
+     ├── Groq (AI intent + reply)
      ├── Paystack (payment links)
      └── Supabase (DB + auth + Vault)
 ```
@@ -56,7 +56,7 @@ Wabizz Server (TanStack Start / Cloudflare Workers)
 - Supabase project (free tier is fine)
 - Twilio account with WhatsApp sandbox or verified number
 - Paystack account (NGN)
-- Anthropic API key
+- Groq API key
 
 ---
 
@@ -98,7 +98,7 @@ Copy `.env.example` to `.env.local` and fill in every value. Required variables:
 | `SUPABASE_PUBLISHABLE_KEY`      | Anon key (browser-safe)          | Supabase dashboard → Project Settings → API |
 | `VITE_SUPABASE_URL`             | Same as SUPABASE_URL             | —                                           |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | Same as SUPABASE_PUBLISHABLE_KEY | —                                           |
-| `ANTHROPIC_API_KEY`             | Claude API key                   | console.anthropic.com                       |
+| `GROQ_API_KEY`                  | Groq API key                     | console.groq.com/keys                       |
 | `TWILIO_ACCOUNT_SID`            | Twilio account SID               | console.twilio.com                          |
 | `TWILIO_AUTH_TOKEN`             | Twilio auth token                | console.twilio.com                          |
 | `WABIZZ_PAYSTACK_SECRET_KEY`    | Wabizz's own Paystack SK         | dashboard.paystack.com → Developers         |
@@ -160,7 +160,7 @@ wrangler kv namespace create QUEUE_KV
 wrangler secret put SUPABASE_URL
 wrangler secret put SUPABASE_SERVICE_ROLE_KEY
 wrangler secret put SUPABASE_PUBLISHABLE_KEY
-wrangler secret put ANTHROPIC_API_KEY
+wrangler secret put GROQ_API_KEY
 wrangler secret put TWILIO_ACCOUNT_SID
 wrangler secret put TWILIO_AUTH_TOKEN
 wrangler secret put WABIZZ_PAYSTACK_SECRET_KEY
@@ -358,15 +358,15 @@ Returns `202 Accepted` immediately and runs the job in the background.
 
 Run `bun run pre-launch` before every production deployment. It validates secrets, KV bindings, migration presence, and Supabase URL format automatically. In addition, verify the following manually:
 
-**Anthropic API rate limits**
+**Groq API rate limits**
 
-Contact Anthropic support to request **Tier 3 or higher rate limits** before going live with more than 3,000 daily active users. At 10k DAU × 10 messages/day = 100k Claude API calls/day, the default Tier 1 limits will throttle your platform and cause the dead-letter queue to fill up.
+Check your **rate limit tier** on the Groq console before going live with more than 3,000 daily active users. At 10k DAU × 10 messages/day = 100k Groq API calls/day, default limits will throttle your platform and cause the dead-letter queue to fill up.
 
-To request a higher tier: https://support.anthropic.com — open a ticket with your expected daily token volume.
+To request a higher tier: https://console.groq.com/settings/limits — or contact Groq support with your expected daily token volume.
 
 **Rate limit alerting**
 
-Monitor the `retry_claude_reply` queue in Supabase. If more than 50 jobs accumulate in the dead-letter queue within one hour, that is the signal that Anthropic rate limits are being sustained — scale down traffic or escalate your tier before more users are affected. The existing cron job in `src/routes/api.public.scheduled.ts` already logs DLQ depth; wire it to your alerting channel (Telegram, PagerDuty, etc.).
+Monitor the `retry_claude_reply` queue in Supabase. If more than 50 jobs accumulate in the dead-letter queue within one hour, that is the signal that Groq rate limits are being sustained — scale down traffic or escalate your tier before more users are affected. The existing cron job in `src/routes/api.public.scheduled.ts` already logs DLQ depth; wire it to your alerting channel (Telegram, PagerDuty, etc.).
 
 **Supabase project URL**
 

@@ -225,30 +225,31 @@ async function handleRetryClaudeReply(job: RetryClaudeReplyJob, env?: WorkerEnv)
       systemPrompt: string;
       messages: Array<{ role: string; content: string }>;
     }) {
-      const anthropicKey = envValue(env, "ANTHROPIC_API_KEY");
-      if (!anthropicKey) return null;
+      const groqKey = envValue(env, "GROQ_API_KEY");
+      if (!groqKey) return null;
       try {
         const res = await fetchWithRetry(
-          "https://api.anthropic.com/v1/messages",
+          "https://api.groq.com/openai/v1/chat/completions",
           {
             method: "POST",
             headers: {
-              "x-api-key": anthropicKey,
-              "anthropic-version": "2023-06-01",
+              Authorization: `Bearer ${groqKey}`,
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              model: envValue(env, "ANTHROPIC_MODEL") || "claude-haiku-4-5-20251001",
+              model: envValue(env, "GROQ_MODEL") || "llama-3.3-70b-versatile",
               max_tokens: 1024,
-              system: systemPrompt,
-              messages: messages.map((m) => ({ role: m.role, content: m.content })),
+              messages: [
+                { role: "system", content: systemPrompt },
+                ...messages.map((m) => ({ role: m.role, content: m.content })),
+              ],
             }),
           },
-          { retries: 2, timeoutMs: 10_000, label: "Anthropic retry-job" },
+          { retries: 2, timeoutMs: 10_000, label: "Groq retry-job" },
         );
         if (res.ok) {
           const json = await res.json();
-          return (json.content?.[0]?.text as string) ?? null;
+          return (json.choices?.[0]?.message?.content as string) ?? null;
         }
         return null;
       } catch {

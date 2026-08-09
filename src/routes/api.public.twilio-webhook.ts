@@ -683,9 +683,9 @@ function buildDbDeps(requestId: string): DbDeps {
 function buildAiDeps(requestId: string): AiDepsInternal {
   const internal: AiDepsInternal = { _last429: false, complete: null! };
   internal.complete = async function ({ systemPrompt, messages }) {
-    const anthropicKey = process.env.ANTHROPIC_API_KEY;
-    if (!anthropicKey) {
-      await logError("twilio-webhook", "ANTHROPIC_API_KEY not set", {}, requestId, "fatal");
+    const groqKey = process.env.GROQ_API_KEY;
+    if (!groqKey) {
+      await logError("twilio-webhook", "GROQ_API_KEY not set", {}, requestId, "fatal");
       return null;
     }
 
@@ -696,29 +696,30 @@ function buildAiDeps(requestId: string): AiDepsInternal {
       // Previously timeoutMs was 25_000 — meaning retries could never fire because
       // the outer timeout would kill the request before retry 1 started.
       const res = await fetchWithRetry(
-        "https://api.anthropic.com/v1/messages",
+        "https://api.groq.com/openai/v1/chat/completions",
         {
           method: "POST",
           headers: {
-            "x-api-key": anthropicKey,
-            "anthropic-version": "2023-06-01",
+            Authorization: `Bearer ${groqKey}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
             model:
-              (typeof process !== "undefined" && process.env.ANTHROPIC_MODEL) ||
-              "claude-haiku-4-5-20251001",
+              (typeof process !== "undefined" && process.env.GROQ_MODEL) ||
+              "llama-3.3-70b-versatile",
             max_tokens: 1024,
-            system: systemPrompt,
-            messages: messages.map((m) => ({ role: m.role, content: m.content })),
+            messages: [
+              { role: "system", content: systemPrompt },
+              ...messages.map((m) => ({ role: m.role, content: m.content })),
+            ],
           }),
         },
-        { retries: 2, timeoutMs: 7_000, label: "Anthropic webhook" },
+        { retries: 2, timeoutMs: 7_000, label: "Groq webhook" },
       );
 
       if (res.ok) {
         const json = await res.json();
-        return (json.content?.[0]?.text as string) ?? null;
+        return (json.choices?.[0]?.message?.content as string) ?? null;
       }
 
       // Fix 2: detect 429 explicitly before the error is swallowed into null
@@ -728,7 +729,7 @@ function buildAiDeps(requestId: string): AiDepsInternal {
 
       await logError(
         "twilio-webhook",
-        "Anthropic API error",
+        "Groq API error",
         { status: res.status, body: await res.text() },
         requestId,
       );
@@ -738,8 +739,8 @@ function buildAiDeps(requestId: string): AiDepsInternal {
       await logError(
         "twilio-webhook",
         isTimeout
-          ? "Anthropic call timed out (after retries)"
-          : "Anthropic call failed (after retries)",
+          ? "Groq call timed out (after retries)"
+          : "Groq call failed (after retries)",
         { error: String(e) },
         requestId,
       );

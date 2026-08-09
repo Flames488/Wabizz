@@ -61,8 +61,8 @@ const REQUIRED_SECRETS: Array<{ key: string; hint: string }> = [
     hint: "eyJ... (from Supabase Dashboard → Settings → API → anon/public key)",
   },
   {
-    key: "ANTHROPIC_API_KEY",
-    hint: "sk-ant-... (from https://console.anthropic.com/settings/keys)",
+    key: "GROQ_API_KEY",
+    hint: "gsk_... (from https://console.groq.com/keys)",
   },
   {
     key: "TWILIO_ACCOUNT_SID",

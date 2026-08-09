@@ -99,7 +99,7 @@ describe("Error message quality", () => {
     SUPABASE_URL: "https://ref.supabase.co",
     SUPABASE_SERVICE_ROLE_KEY: "eyJ.role.sig",
     SUPABASE_PUBLISHABLE_KEY: "eyJ.anon.sig",
-    ANTHROPIC_API_KEY: "REPLACE_ME",
+    GROQ_API_KEY: "REPLACE_ME",
     TWILIO_ACCOUNT_SID: "",
     TWILIO_AUTH_TOKEN: "real-token",
     WABIZZ_PAYSTACK_SECRET_KEY: "sk_live_real",
@@ -119,7 +119,7 @@ describe("Error message quality", () => {
 
   it("error mentions all failing keys at once (not just first)", () => {
     const result = validateStartupSecrets(partialEnv);
-    expect(result).toContain("ANTHROPIC_API_KEY");
+    expect(result).toContain("GROQ_API_KEY");
     expect(result).toContain("TWILIO_ACCOUNT_SID");
   });
 

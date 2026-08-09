@@ -72,7 +72,7 @@ export const Route = createFileRoute("/api/public/health")({
           "TWILIO_ACCOUNT_SID",
           "TWILIO_API_KEY_SID",
           "TWILIO_API_KEY_SECRET",
-          "ANTHROPIC_API_KEY",
+          "GROQ_API_KEY",
           "WABIZZ_PAYSTACK_SECRET_KEY",
           "APP_URL",
         ];

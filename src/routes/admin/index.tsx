@@ -1,7 +1,8 @@
 /**
  * /admin — Wabizz Control Plane v3
  *
- * Login: Emmanuel / Flames48@!
+ * Log in via /auth (same email+password form as regular users — admin
+ * credentials are checked first, then it falls back to Supabase).
  *
  * Tabs: OVERVIEW · REVENUE · USERS · QUEUE · ALERTS · LOGS · HEALTH · TRACE
  */
@@ -281,11 +282,6 @@ export default function AdminPage() {
   const [token, setToken] = useState<string | null>(() =>
     typeof window !== "undefined" ? sessionStorage.getItem("wb_tok") : null
   );
-  const [loginU, setLoginU] = useState("");
-  const [loginP, setLoginP] = useState("");
-  const [loginErr, setLoginErr] = useState("");
-  const [loginBusy, setLoginBusy] = useState(false);
-  const [showPass, setShowPass] = useState(false);
   type Tab = "overview" | "revenue" | "users" | "queue" | "alerts" | "logs" | "health" | "trace";
   const [tab, setTab] = useState<Tab>("overview");
 
@@ -362,29 +358,6 @@ export default function AdminPage() {
     return () => clearInterval(tickRef.current);
   }, [refresh, token]);
 
-  async function doLogin() {
-    setLoginErr("");
-    setLoginBusy(true);
-    try {
-      const r = await fetch("/admin/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: loginU, password: loginP }),
-      });
-      const d = await r.json();
-      if (!r.ok) {
-        setLoginErr(d.error ?? "Invalid credentials");
-        return;
-      }
-      sessionStorage.setItem("wb_tok", d.token);
-      setToken(d.token);
-    } catch {
-      setLoginErr("Network error");
-    } finally {
-      setLoginBusy(false);
-    }
-  }
-
   async function dlqAction(jobId: string, action: "retry" | "ack") {
     try {
       await api(`/dlq/${jobId}/${action}`, token!, { method: "POST" });
@@ -429,190 +402,14 @@ export default function AdminPage() {
     }
   }
 
-  // ── LOGIN SCREEN ────────────────────────────────────────────────────────────
-  if (!token)
-    return (
-      <div
-        style={{
-          minHeight: "100vh",
-          background: C.bg,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontFamily: "'IBM Plex Mono', 'Courier New', monospace",
-        }}
-      >
-        <style>{`@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');`}</style>
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            backgroundImage: `radial-gradient(ellipse at 50% 0%, ${C.greenGlow} 0%, transparent 60%)`,
-            pointerEvents: "none",
-          }}
-        />
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            backgroundImage: `linear-gradient(${C.dim}55 1px,transparent 1px),linear-gradient(90deg,${C.dim}55 1px,transparent 1px)`,
-            backgroundSize: "48px 48px",
-            opacity: 0.25,
-            pointerEvents: "none",
-          }}
-        />
-
-        <div
-          style={{
-            position: "relative",
-            background: C.surface,
-            border: `1px solid ${C.border}`,
-            borderRadius: 14,
-            padding: "48px 52px",
-            width: 400,
-            boxShadow: `0 0 100px #00000090, 0 0 40px ${C.greenGlow}`,
-          }}
-        >
-          <div style={{ marginBottom: 40 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
-              <div
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 9,
-                  background: `linear-gradient(135deg, ${C.green}, ${C.greenDim})`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 18,
-                }}
-              >
-                💬
-              </div>
-              <div>
-                <div
-                  style={{ color: C.text, fontSize: 16, fontWeight: 700, letterSpacing: "-0.5px" }}
-                >
-                  Wabizz
-                </div>
-                <div style={{ color: C.muted, fontSize: 10, letterSpacing: "2px" }}>
-                  CONTROL PLANE
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {loginErr && (
-            <div
-              style={{
-                background: "#1a0a0a",
-                border: `1px solid ${C.red}33`,
-                borderRadius: 7,
-                padding: "10px 14px",
-                marginBottom: 16,
-                color: C.red,
-                fontSize: 12,
-              }}
-            >
-              {loginErr}
-            </div>
-          )}
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <div>
-              <div
-                style={{ color: C.muted, fontSize: 10, letterSpacing: "1.5px", marginBottom: 6 }}
-              >
-                USERNAME
-              </div>
-              <input
-                value={loginU}
-                onChange={(e) => setLoginU(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && !loginBusy && doLogin()}
-                style={inp}
-                autoComplete="off"
-                autoCorrect="off"
-                autoCapitalize="off"
-                spellCheck={false}
-                placeholder="Enter username"
-                name={`u_${Math.random()}`}
-              />
-            </div>
-            <div>
-              <div
-                style={{ color: C.muted, fontSize: 10, letterSpacing: "1.5px", marginBottom: 6 }}
-              >
-                PASSWORD
-              </div>
-              <div style={{ position: "relative" }}>
-                <input
-                  type={showPass ? "text" : "password"}
-                  value={loginP}
-                  onChange={(e) => setLoginP(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && !loginBusy && doLogin()}
-                  style={{ ...inp, paddingRight: 40 }}
-                  autoComplete="off"
-                  placeholder="Enter password"
-                  name={`p_${Math.random()}`}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPass((v) => !v)}
-                  style={{
-                    position: "absolute",
-                    right: 10,
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    background: "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                    color: C.muted,
-                    fontSize: 14,
-                    padding: 0,
-                    lineHeight: 1,
-                  }}
-                  tabIndex={-1}
-                >
-                  {showPass ? "🙈" : "👁"}
-                </button>
-              </div>
-            </div>
-            <button
-              onClick={doLogin}
-              disabled={loginBusy}
-              style={{
-                marginTop: 8,
-                background: loginBusy
-                  ? C.dim
-                  : `linear-gradient(135deg, ${C.green}, ${C.greenDim})`,
-                border: "none",
-                borderRadius: 8,
-                padding: "14px 0",
-                color: "#060810",
-                fontWeight: 700,
-                fontSize: 12,
-                cursor: loginBusy ? "not-allowed" : "pointer",
-                fontFamily: "inherit",
-                letterSpacing: "2px",
-              }}
-            >
-              {loginBusy ? "AUTHENTICATING…" : "ACCESS DASHBOARD →"}
-            </button>
-          </div>
-          <div
-            style={{
-              marginTop: 24,
-              color: C.muted,
-              fontSize: 10,
-              textAlign: "center",
-              letterSpacing: "0.5px",
-            }}
-          >
-            JWT · 4-HOUR SESSION · WABIZZ INTERNAL
-          </div>
-        </div>
-      </div>
-    );
+  // ── NO SESSION ──────────────────────────────────────────────────────────────
+  // Admin login now happens on the main /auth page (same email+password form —
+  // it tries the admin credentials first, then falls back to Supabase). This
+  // page just gates on the token and bounces back to /auth if it's missing.
+  if (!token) {
+    if (typeof window !== "undefined") window.location.replace("/auth");
+    return null;
+  }
 
   const ov = data?.overview;
   const rev = data?.revenue;

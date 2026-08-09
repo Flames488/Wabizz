@@ -85,12 +85,12 @@ export const chatWithAI = createServerFn({ method: "POST" })
     }
     // ── END GUARD ──────────────────────────────────────────────────────────
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) {
-      await logError("chat.functions", "ANTHROPIC_API_KEY not configured", {}, requestId);
+      await logError("chat.functions", "GROQ_API_KEY not configured", {}, requestId);
       return {
         reply: null,
-        error: "AI is not configured. Please add ANTHROPIC_API_KEY to Cloudflare Worker secrets.",
+        error: "AI is not configured. Please add GROQ_API_KEY to Cloudflare Worker secrets.",
       };
     }
 
@@ -106,33 +106,34 @@ export const chatWithAI = createServerFn({ method: "POST" })
     try {
       // FIX PERF 4: fetchWithRetry replaces the raw AbortController pattern.
       const res = await fetchWithRetry(
-        "https://api.anthropic.com/v1/messages",
+        "https://api.groq.com/openai/v1/chat/completions",
         {
           method: "POST",
           headers: {
-            "x-api-key": apiKey,
-            "anthropic-version": "2023-06-01",
+            Authorization: `Bearer ${apiKey}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "claude-haiku-4-5-20251001",
+            model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
             max_tokens: 1024,
-            system: systemPrompt,
-            messages: data.messages.map((m) => ({ role: m.role, content: m.content })),
+            messages: [
+              { role: "system", content: systemPrompt },
+              ...data.messages.map((m) => ({ role: m.role, content: m.content })),
+            ],
           }),
         },
-        { retries: 2, timeoutMs: 25_000, label: "Anthropic chat" },
+        { retries: 2, timeoutMs: 25_000, label: "Groq chat" },
       );
 
       if (res.status === 429) {
-        await logError("chat.functions", "Anthropic rate limit", { status: 429 }, requestId);
+        await logError("chat.functions", "Groq rate limit", { status: 429 }, requestId);
         return { reply: null, error: "Too many requests. Please wait a moment and try again." };
       }
       if (!res.ok) {
         const t = await res.text();
         await logError(
           "chat.functions",
-          "Anthropic API error",
+          "Groq API error",
           { status: res.status, body: t },
           requestId,
         );
@@ -140,12 +141,12 @@ export const chatWithAI = createServerFn({ method: "POST" })
       }
 
       const json = await res.json();
-      const reply: string = json.content?.[0]?.text ?? "";
+      const reply: string = json.choices?.[0]?.message?.content ?? "";
       return { reply, error: null as string | null };
     } catch (e) {
       await logError(
         "chat.functions",
-        "Network error calling Anthropic (after retries)",
+        "Network error calling Groq (after retries)",
         { error: String(e) },
         requestId,
       );

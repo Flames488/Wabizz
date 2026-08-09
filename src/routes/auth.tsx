@@ -57,6 +57,22 @@ function AuthPage() {
         const { data } = await supabase.auth.getSession();
         if (data.session) navigate({ to: "/onboarding" });
       } else {
+        // Admin accounts share this same form — try the admin login first since
+        // it's a single fast lookup; any non-admin email/password just falls
+        // through to the normal Supabase sign-in below.
+        const adminRes = await fetch("/admin/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: email.trim(), password }),
+        });
+        if (adminRes.ok) {
+          const { token } = await adminRes.json();
+          sessionStorage.setItem("wb_tok", token);
+          toast.success("Welcome back 👋");
+          navigate({ to: "/admin" });
+          return;
+        }
+
         const { error } = await supabase.auth.signInWithPassword({
           email: email.trim(),
           password,

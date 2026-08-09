@@ -354,38 +354,39 @@ async function getBankTransferDetails(businessId: string): Promise<{
 function buildAiDeps(requestId: string): AiDeps {
   return {
     async complete({ systemPrompt, messages }) {
-      const anthropicKey = process.env.ANTHROPIC_API_KEY;
-      if (!anthropicKey) {
-        await logError("meta-webhook", "ANTHROPIC_API_KEY is not configured", {}, requestId, "fatal");
+      const groqKey = process.env.GROQ_API_KEY;
+      if (!groqKey) {
+        await logError("meta-webhook", "GROQ_API_KEY is not configured", {}, requestId, "fatal");
         return null;
       }
 
       const res = await fetchWithRetry(
-        "https://api.anthropic.com/v1/messages",
+        "https://api.groq.com/openai/v1/chat/completions",
         {
           method: "POST",
           headers: {
-            "x-api-key": anthropicKey,
-            "anthropic-version": "2023-06-01",
+            Authorization: `Bearer ${groqKey}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: process.env.ANTHROPIC_MODEL || "claude-haiku-4-5-20251001",
+            model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
             max_tokens: 1024,
-            system: systemPrompt,
-            messages: messages.map((m) => ({ role: m.role, content: m.content })),
+            messages: [
+              { role: "system", content: systemPrompt },
+              ...messages.map((m) => ({ role: m.role, content: m.content })),
+            ],
           }),
         },
-        { retries: 2, timeoutMs: 7_000, label: "Anthropic meta-webhook" },
+        { retries: 2, timeoutMs: 7_000, label: "Groq meta-webhook" },
       );
 
       if (!res.ok) {
-        await logError("meta-webhook", "Anthropic API error", { status: res.status }, requestId);
+        await logError("meta-webhook", "Groq API error", { status: res.status }, requestId);
         return null;
       }
 
-      const json = (await res.json()) as { content?: Array<{ text?: string }> };
-      return json.content?.[0]?.text ?? null;
+      const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
+      return json.choices?.[0]?.message?.content ?? null;
     },
   };
 }

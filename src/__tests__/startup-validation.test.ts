@@ -38,8 +38,8 @@ describe("isPlaceholder()", () => {
     expect(isPlaceholder("https://abc123.supabase.co")).toBe(false);
   });
 
-  it("does NOT flag a real Anthropic key as placeholder", () => {
-    expect(isPlaceholder("sk-ant-api03-realkey123456")).toBe(false);
+  it("does NOT flag a real Groq key as placeholder", () => {
+    expect(isPlaceholder("gsk_realkey123456")).toBe(false);
   });
 
   it("does NOT flag a real JWT as placeholder", () => {
@@ -56,10 +56,14 @@ const VALID_ENV: Record<string, string> = {
   SUPABASE_SERVICE_ROLE_KEY:
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIn0.realkey",
   SUPABASE_PUBLISHABLE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiJ9.realanon",
-  ANTHROPIC_API_KEY: "sk-ant-api03-realanthropickey",
+  GROQ_API_KEY: "gsk_realgroqkey",
   TWILIO_ACCOUNT_SID: "AC1234567890abcdef1234567890abcdef",
   TWILIO_AUTH_TOKEN: "abc123_real_twilio_auth_token",
+  TWILIO_API_KEY_SID: "SK_test_fixture_not_a_real_key",
+  TWILIO_API_KEY_SECRET: "real_twilio_api_key_secret",
+  TWILIO_PHONE_NUMBER: "whatsapp:+14155238886",
   WABIZZ_PAYSTACK_SECRET_KEY: "sk_live_realpaystack123456",
+  WABIZZ_PAYSTACK_PUBLIC_KEY: "pk_live_realpaystack123456",
   CRON_SECRET: "a".repeat(64),
   ADMIN_JWT_SECRET: "b".repeat(128),
 };
@@ -71,10 +75,10 @@ describe("validateStartupSecrets()", () => {
 
   it("reports MISSING when a required key is absent", () => {
     const env = { ...VALID_ENV };
-    delete (env as Record<string, string>).ANTHROPIC_API_KEY;
+    delete (env as Record<string, string>).GROQ_API_KEY;
     const result = validateStartupSecrets(env);
     expect(result).not.toBeNull();
-    expect(result).toContain("ANTHROPIC_API_KEY");
+    expect(result).toContain("GROQ_API_KEY");
     expect(result).toContain("MISSING");
   });
 
@@ -86,10 +90,10 @@ describe("validateStartupSecrets()", () => {
   });
 
   it("reports PLACEHOLDER when a value is REPLACE_ME", () => {
-    const env = { ...VALID_ENV, ANTHROPIC_API_KEY: "REPLACE_ME" };
+    const env = { ...VALID_ENV, GROQ_API_KEY: "REPLACE_ME" };
     const result = validateStartupSecrets(env);
     expect(result).not.toBeNull();
-    expect(result).toContain("ANTHROPIC_API_KEY");
+    expect(result).toContain("GROQ_API_KEY");
     expect(result).toContain("PLACEHOLDER");
   });
 
@@ -121,12 +125,12 @@ describe("validateStartupSecrets()", () => {
   it("reports multiple issues at once", () => {
     const env = {
       ...VALID_ENV,
-      ANTHROPIC_API_KEY: "REPLACE_ME",
+      GROQ_API_KEY: "REPLACE_ME",
       CRON_SECRET: "",
       ADMIN_JWT_SECRET: "your-admin-secret",
     };
     const result = validateStartupSecrets(env);
-    expect(result).toContain("ANTHROPIC_API_KEY");
+    expect(result).toContain("GROQ_API_KEY");
     expect(result).toContain("CRON_SECRET");
     expect(result).toContain("ADMIN_JWT_SECRET");
     // Should show both MISSING and PLACEHOLDER sections
@@ -135,7 +139,7 @@ describe("validateStartupSecrets()", () => {
   });
 
   it("includes wrangler secret put instructions in error output", () => {
-    const env = { ...VALID_ENV, ANTHROPIC_API_KEY: "REPLACE_ME" };
+    const env = { ...VALID_ENV, GROQ_API_KEY: "REPLACE_ME" };
     const result = validateStartupSecrets(env);
     expect(result).toContain("wrangler secret put");
   });
@@ -162,8 +166,8 @@ describe("REQUIRED_SECRETS registry", () => {
     expect(REQUIRED_SECRETS.some((s) => s.key === "SUPABASE_URL")).toBe(true);
   });
 
-  it("includes ANTHROPIC_API_KEY", () => {
-    expect(REQUIRED_SECRETS.some((s) => s.key === "ANTHROPIC_API_KEY")).toBe(true);
+  it("includes GROQ_API_KEY", () => {
+    expect(REQUIRED_SECRETS.some((s) => s.key === "GROQ_API_KEY")).toBe(true);
   });
 
   it("includes TWILIO_ACCOUNT_SID", () => {
