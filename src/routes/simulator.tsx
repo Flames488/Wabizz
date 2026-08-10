@@ -118,9 +118,14 @@ function Simulator() {
   };
 
   const generateLink = async (msg: Msg, idx: number) => {
-    const prevUser = [...messages.slice(0, idx)].reverse().find((m) => m.role === "user");
-    const amount =
-      extractAmount(msg.content) ?? (prevUser ? extractAmount(prevUser.content) : null);
+    // Scan the whole conversation up to this message, not just the message
+    // itself and the one before it — the price is often quoted several turns
+    // earlier than where the customer actually asks for payment details.
+    const amounts = messages
+      .slice(0, idx + 1)
+      .map((m) => extractAmount(m.content))
+      .filter((n): n is number => n !== null);
+    const amount = amounts.length ? Math.max(...amounts) : null;
     if (!amount) return toast.error("No amount found in this conversation yet.");
 
     const res = await callLink({ data: { amountNaira: amount } });
