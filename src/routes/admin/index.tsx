@@ -35,12 +35,15 @@ import {
   Info,
   ChevronDown,
   ChevronRight,
+  Menu,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 
 export const Route = createFileRoute("/admin/")({
@@ -269,6 +272,7 @@ export default function AdminPage() {
   };
   type Tab = "overview" | "revenue" | "users" | "queue" | "alerts" | "logs" | "health" | "trace";
   const [tab, setTab] = useState<Tab>("overview");
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const [data, setData] = useState<{
     overview: Overview;
@@ -418,83 +422,178 @@ export default function AdminPage() {
     <div className={theme === "dark" ? "dark" : undefined}>
       <div className="min-h-screen bg-background text-sm text-foreground">
         {/* ── TOPBAR ── */}
-        <nav className="sticky top-0 z-50 flex h-14 items-center gap-1 border-b border-border bg-surface px-6">
-          <div className="mr-5 flex h-full flex-shrink-0 items-center gap-2.5 border-r border-border pr-5">
-            <img src="/wabizz-logo.png" alt="Wabizz" className="h-7 w-7 rounded-md object-contain" />
-            <span className="text-sm font-semibold tracking-tight text-foreground">Wabizz</span>
-            <span className="text-xs text-muted-foreground">admin</span>
-          </div>
+        <nav className="sticky top-0 z-50 border-b border-border bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80">
+          <div className="flex h-14 items-center gap-1 px-3 sm:px-6">
+            {/* Mobile hamburger nav */}
+            <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+              <SheetTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="mr-1 h-9 w-9 flex-shrink-0 text-muted-foreground md:hidden"
+                  aria-label="Open navigation menu"
+                >
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-72 p-0">
+                <div className="flex h-14 items-center gap-2.5 border-b border-border px-4">
+                  <img
+                    src="/wabizz-logo.png"
+                    alt="Wabizz"
+                    className="h-7 w-7 rounded-md object-contain"
+                  />
+                  <span className="text-sm font-semibold tracking-tight text-foreground">
+                    Wabizz
+                  </span>
+                  <span className="text-xs text-muted-foreground">admin</span>
+                </div>
+                <div className="flex flex-col gap-1 p-3">
+                  {TABS.map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => {
+                        setTab(t.id);
+                        setMobileNavOpen(false);
+                      }}
+                      className={cn(
+                        "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
+                        tab === t.id
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                      )}
+                    >
+                      <t.icon className="h-4 w-4 flex-shrink-0" />
+                      {t.label}
+                      {!!t.badge && (
+                        <Badge
+                          variant="destructive"
+                          className="ml-auto h-4 min-w-4 justify-center rounded-full px-1 text-[10px] leading-none"
+                        >
+                          {t.badge}
+                        </Badge>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </SheetContent>
+            </Sheet>
 
-          <div className="flex flex-1 items-center gap-1 overflow-x-auto">
-            {TABS.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
-                className={cn(
-                  "relative flex h-14 items-center gap-1.5 whitespace-nowrap border-b-2 px-3.5 text-xs font-medium transition-colors",
-                  tab === t.id
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground",
-                )}
-              >
-                <t.icon className="h-3.5 w-3.5" />
-                {t.label}
-                {!!t.badge && (
-                  <Badge
-                    variant="destructive"
-                    className="ml-0.5 h-4 min-w-4 justify-center rounded-full px-1 text-[10px] leading-none"
-                  >
-                    {t.badge}
-                  </Badge>
-                )}
-              </button>
-            ))}
-          </div>
-
-          <div className="ml-auto flex flex-shrink-0 items-center gap-3">
-            <div className="flex items-center gap-1.5">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+            <div className="mr-3 flex h-full flex-shrink-0 items-center gap-2 border-r border-border pr-3 sm:mr-5 sm:gap-2.5 sm:pr-5">
+              <img src="/wabizz-logo.png" alt="Wabizz" className="h-7 w-7 rounded-md object-contain" />
+              <span className="hidden text-sm font-semibold tracking-tight text-foreground sm:inline">
+                Wabizz
               </span>
-              <span className="text-xs text-muted-foreground">Live</span>
+              <span className="hidden text-xs text-muted-foreground sm:inline">admin</span>
             </div>
-            {actionMsg && (
-              <span
-                className={cn(
-                  "text-xs font-medium",
-                  actionMsg.startsWith("✓") ? "text-primary" : "text-destructive",
-                )}
+
+            {/* Desktop tabs */}
+            <div className="hidden flex-1 items-center gap-1 overflow-x-auto md:flex">
+              {TABS.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setTab(t.id)}
+                  className={cn(
+                    "relative flex h-14 items-center gap-1.5 whitespace-nowrap border-b-2 px-3.5 text-xs font-medium transition-colors",
+                    tab === t.id
+                      ? "border-primary text-primary"
+                      : "border-transparent text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <t.icon className="h-3.5 w-3.5" />
+                  {t.label}
+                  {!!t.badge && (
+                    <Badge
+                      variant="destructive"
+                      className="ml-0.5 h-4 min-w-4 justify-center rounded-full px-1 text-[10px] leading-none"
+                    >
+                      {t.badge}
+                    </Badge>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* Mobile: current tab label */}
+            <div className="flex-1 truncate text-sm font-semibold text-foreground md:hidden">
+              {TABS.find((t) => t.id === tab)?.label}
+            </div>
+
+            <div className="ml-auto flex flex-shrink-0 items-center gap-2 sm:gap-3">
+              <div className="hidden items-center gap-1.5 sm:flex">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+                </span>
+                <span className="text-xs text-muted-foreground">Live</span>
+              </div>
+              {actionMsg && (
+                <span
+                  className={cn(
+                    "hidden text-xs font-medium sm:inline",
+                    actionMsg.startsWith("✓") ? "text-primary" : "text-destructive",
+                  )}
+                >
+                  {actionMsg}
+                </span>
+              )}
+
+              {/* Theme toggle */}
+              <div className="flex items-center gap-1.5 rounded-full border border-border bg-background px-2 py-1">
+                <Sun
+                  className={cn(
+                    "h-3.5 w-3.5 transition-colors",
+                    theme === "light" ? "text-warning" : "text-muted-foreground/50",
+                  )}
+                />
+                <Switch
+                  checked={theme === "dark"}
+                  onCheckedChange={toggleTheme}
+                  aria-label="Toggle dark mode"
+                />
+                <Moon
+                  className={cn(
+                    "h-3.5 w-3.5 transition-colors",
+                    theme === "dark" ? "text-primary" : "text-muted-foreground/50",
+                  )}
+                />
+              </div>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground sm:hidden"
+                aria-label="Exit"
+                onClick={() => {
+                  sessionStorage.removeItem("wb_tok");
+                  setToken(null);
+                }}
               >
-                {actionMsg}
-              </span>
-            )}
-            <Button variant="outline" size="sm" onClick={toggleTheme} className="h-8 gap-1.5 text-xs">
-              {theme === "light" ? <Moon className="h-3.5 w-3.5" /> : <Sun className="h-3.5 w-3.5" />}
-              {theme === "light" ? "Dark" : "Light"}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 gap-1.5 text-xs text-muted-foreground"
-              onClick={() => {
-                sessionStorage.removeItem("wb_tok");
-                setToken(null);
-              }}
-            >
-              <LogOut className="h-3.5 w-3.5" />
-              Exit
-            </Button>
+                <LogOut className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="hidden h-8 gap-1.5 text-xs text-muted-foreground sm:flex"
+                onClick={() => {
+                  sessionStorage.removeItem("wb_tok");
+                  setToken(null);
+                }}
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                Exit
+              </Button>
+            </div>
           </div>
         </nav>
 
         {/* ── CONTENT ── */}
-        <div className="mx-auto max-w-[1400px] px-6 py-7">
+        <div className="mx-auto max-w-[1400px] px-3 py-5 sm:px-6 sm:py-7">
           {/* ════ OVERVIEW ════ */}
           {tab === "overview" && (
             <div>
               {ov && (ov.failureRatePct > 20 || ov.dlqCount > 10) && (
-                <div className="mb-6 flex items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3">
+                <div className="mb-6 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3">
                   <AlertTriangle className="h-4 w-4 flex-shrink-0 text-destructive" />
                   <span className="font-semibold text-destructive">System degraded</span>
                   <span className="text-xs text-destructive">
@@ -503,7 +602,7 @@ export default function AdminPage() {
                 </div>
               )}
 
-              <div className="mb-4 grid grid-cols-4 gap-3.5">
+              <div className="mb-4 grid grid-cols-2 gap-3.5 lg:grid-cols-4">
                 <HeroCard
                   label="Monthly recurring"
                   value={rev ? fmtNaira(rev.mrr) : "—"}
@@ -535,7 +634,7 @@ export default function AdminPage() {
                 />
               </div>
 
-              <div className="mb-6 grid grid-cols-4 gap-3.5">
+              <div className="mb-6 grid grid-cols-2 gap-3.5 lg:grid-cols-4">
                 <StatCard label="Revenue today" value={rev ? fmtNaira(rev.todayRevenue) : "—"} color="text-primary" />
                 <StatCard
                   label="Revenue this month"
@@ -555,7 +654,7 @@ export default function AdminPage() {
                 />
               </div>
 
-              <div className="mb-6 grid grid-cols-3 gap-3.5">
+              <div className="mb-6 grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
                 <ChartBox title="Jobs created (6h)">
                   <div className="text-primary">
                     <Spark data={data?.series.jobsCreated ?? []} h={56} w={260} />
@@ -600,7 +699,7 @@ export default function AdminPage() {
               {data?.circuits && (
                 <div className="mb-6">
                   <SectionLabel>Circuit breakers</SectionLabel>
-                  <div className="flex gap-2.5">
+                  <div className="flex flex-wrap gap-2.5">
                     {Object.entries(data.circuits).map(([svc, st]) => {
                       // Internal key/DB column is still "anthropic" (pre-dates the
                       // Groq migration) — display label only, history stays intact.
@@ -609,7 +708,7 @@ export default function AdminPage() {
                         <Card
                           key={svc}
                           className={cn(
-                            "flex flex-1 items-center gap-3 px-4 py-3",
+                            "flex min-w-[160px] flex-1 items-center gap-3 px-4 py-3",
                             st.state === "OPEN" && "border-destructive/40",
                             st.state === "HALF_OPEN" && "border-warning/40",
                           )}
@@ -634,7 +733,7 @@ export default function AdminPage() {
               )}
 
               <SectionLabel>External APIs (1h)</SectionLabel>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {(["twilio", "paystack"] as const).map((svc) => {
                   const h = data?.apiHealth[svc];
                   const ok = !h || h.successRate >= 95;
@@ -666,7 +765,7 @@ export default function AdminPage() {
           {tab === "revenue" && (
             <div>
               <SectionLabel>Revenue overview</SectionLabel>
-              <div className="mb-7 grid grid-cols-4 gap-3.5">
+              <div className="mb-7 grid grid-cols-2 gap-3.5 lg:grid-cols-4">
                 <HeroCard label="MRR" value={rev ? fmtNaira(rev.mrr) : "—"} sub="monthly recurring" color="text-primary" icon={TrendingUp} glow />
                 <HeroCard label="All-time revenue" value={rev ? fmtNaira(rev.totalAllTime) : "—"} sub="from paid orders" color="text-blue-500" icon={Gem} />
                 <HeroCard label="This month" value={rev ? fmtNaira(rev.monthRevenue) : "—"} sub="last 30 days" color="text-violet-500" icon={CalendarDays} />
@@ -674,8 +773,8 @@ export default function AdminPage() {
               </div>
 
               <SectionLabel>Subscription breakdown</SectionLabel>
-              <div className="mb-7 grid grid-cols-3 gap-3.5">
-                <Card className="col-span-1 flex items-center justify-center p-6">
+              <div className="mb-7 grid grid-cols-1 gap-3.5 lg:grid-cols-3">
+                <Card className="flex items-center justify-center p-6 lg:col-span-1">
                   {rev && (
                     <Donut
                       size={130}
@@ -687,8 +786,8 @@ export default function AdminPage() {
                     />
                   )}
                 </Card>
-                <Card className="col-span-2 p-6">
-                  <div className="grid grid-cols-3 gap-4">
+                <Card className="p-6 lg:col-span-2">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                     {[
                       { plan: "starter", label: "Starter", price: 5000, color: CHART_BLUE },
                       { plan: "growth", label: "Growth", price: 12000, color: "var(--color-primary)" },
@@ -715,7 +814,7 @@ export default function AdminPage() {
               </div>
 
               <SectionLabel>Subscription health</SectionLabel>
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                 <StatCard label="Paying" value={usr ? fmtNum(usr.activeSubs) : "—"} color="text-primary" />
                 <StatCard label="On trial" value={usr ? fmtNum(usr.trialSubs) : "—"} color="text-warning" />
                 <StatCard label="Churned (30d)" value={usr ? fmtNum(usr.cancelledThisMonth) : "—"} color="text-destructive" />
@@ -736,7 +835,7 @@ export default function AdminPage() {
           {tab === "users" && (
             <div>
               <SectionLabel>User overview</SectionLabel>
-              <div className="mb-7 grid grid-cols-4 gap-3.5">
+              <div className="mb-7 grid grid-cols-2 gap-3.5 lg:grid-cols-4">
                 <HeroCard label="Total businesses" value={usr ? fmtNum(usr.totalBusinesses) : "—"} sub="all time" color="text-blue-500" icon={Building2} />
                 <HeroCard
                   label="New today"
@@ -750,7 +849,7 @@ export default function AdminPage() {
                 <HeroCard label="Active now" value={ov ? fmtNum(ov.activeUsers) : "—"} sub="last 15 min" color="text-warning" icon={Zap} />
               </div>
 
-              <div className="grid grid-cols-2 gap-3.5">
+              <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
                 <Card className="p-6">
                   <div className="mb-4 text-xs uppercase tracking-wide text-muted-foreground">Account status</div>
                   {[
@@ -897,9 +996,9 @@ export default function AdminPage() {
                         a.severity === "info" && "border-l-blue-500",
                       )}
                     >
-                      <div className="mb-1.5 flex items-center gap-3">
+                      <div className="mb-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
                         <SevBadge sev={a.severity} />
-                        <span className="flex-1 font-semibold text-foreground">{a.title}</span>
+                        <span className="min-w-0 flex-1 font-semibold text-foreground">{a.title}</span>
                         {a.aggregated_count > 1 && (
                           <Badge variant="secondary" className="text-[10px]">
                             ×{a.aggregated_count}
@@ -910,7 +1009,7 @@ export default function AdminPage() {
                         </span>
                       </div>
                       <div
-                        className="pl-[52px] text-xs text-muted-foreground [&_code]:rounded [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-mono"
+                        className="text-xs text-muted-foreground sm:pl-[52px] [&_code]:rounded [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:font-mono"
                         dangerouslySetInnerHTML={{ __html: a.body }}
                       />
                     </Card>
@@ -928,7 +1027,7 @@ export default function AdminPage() {
                 <select
                   value={logFilter.level}
                   onChange={(e) => setLogFilter((f) => ({ ...f, level: e.target.value }))}
-                  className="h-9 w-[130px] rounded-md border border-input bg-background px-3 text-xs shadow-sm outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-xs shadow-sm outline-none focus-visible:ring-1 focus-visible:ring-ring sm:w-[130px]"
                 >
                   <option value="">All levels</option>
                   <option value="warn">Warn</option>
@@ -939,7 +1038,7 @@ export default function AdminPage() {
                   placeholder="Filter source…"
                   value={logFilter.source}
                   onChange={(e) => setLogFilter((f) => ({ ...f, source: e.target.value }))}
-                  className="h-9 w-[180px] text-xs"
+                  className="h-9 w-full text-xs sm:w-[180px]"
                 />
                 <Button size="sm" variant="outline" className="h-9 gap-1.5 text-xs text-primary" onClick={refresh}>
                   <RefreshCw className="h-3 w-3" />
@@ -961,19 +1060,19 @@ export default function AdminPage() {
                         log.level === "warn" && "border-l-warning",
                       )}
                     >
-                      <div className="flex items-start gap-3">
+                      <div className="flex flex-wrap items-start gap-x-3 gap-y-1">
                         {expandedLog === log.id ? (
                           <ChevronDown className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
                         ) : (
                           <ChevronRight className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
                         )}
                         <LvlBadge lvl={log.level} />
-                        <span className="min-w-[140px] text-xs font-medium text-blue-500">{log.source}</span>
-                        <span className="flex-1 text-foreground">{log.message}</span>
-                        <span className="whitespace-nowrap text-xs text-muted-foreground">{fmtTime(log.occurred_at)}</span>
+                        <span className="min-w-[100px] text-xs font-medium text-blue-500 sm:min-w-[140px]">{log.source}</span>
+                        <span className="min-w-0 flex-1 basis-full text-foreground sm:basis-auto">{log.message}</span>
+                        <span className="ml-auto whitespace-nowrap text-xs text-muted-foreground">{fmtTime(log.occurred_at)}</span>
                       </div>
                       {expandedLog === log.id && log.context && Object.keys(log.context).length > 0 && (
-                        <pre className="mt-2.5 ml-[104px] max-h-[120px] overflow-auto rounded-md border border-border bg-muted p-2.5 font-mono text-xs text-foreground">
+                        <pre className="mt-2.5 max-h-[120px] overflow-auto rounded-md border border-border bg-muted p-2.5 font-mono text-xs text-foreground sm:ml-[104px]">
                           {JSON.stringify(log.context, null, 2)}
                         </pre>
                       )}
@@ -988,7 +1087,7 @@ export default function AdminPage() {
           {tab === "health" && (
             <div>
               <SectionLabel>External API health (6h)</SectionLabel>
-              <div className="mb-7 grid grid-cols-3 gap-3.5">
+              <div className="mb-7 grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
                 {(["twilio", "paystack", "anthropic"] as const).map((svc) => {
                   // Internal key/DB column is still "anthropic" (pre-dates the Groq
                   // migration) — display label only, so metrics history stays intact.
