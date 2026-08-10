@@ -437,7 +437,7 @@ export default function AdminPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-9 w-9 flex-shrink-0 text-muted-foreground md:hidden"
+                  className="h-9 w-9 flex-shrink-0 text-muted-foreground lg:hidden"
                   aria-label="Open navigation menu"
                 >
                   <Menu className="h-5 w-5" />
@@ -531,7 +531,7 @@ export default function AdminPage() {
               </SheetContent>
             </Sheet>
 
-            <div className="mr-2 flex h-full flex-shrink-0 items-center gap-2 sm:mr-5 sm:gap-2.5 sm:border-r sm:border-border sm:pr-5">
+            <div className="mr-2 flex h-full flex-shrink-0 items-center gap-2 sm:mr-5 sm:gap-2.5 lg:border-r lg:border-border lg:pr-5">
               <img src="/wabizz-logo.png" alt="Wabizz" className="h-7 w-7 rounded-md object-contain" />
               <span className="hidden text-sm font-semibold tracking-tight text-foreground sm:inline">
                 Wabizz
@@ -539,8 +539,10 @@ export default function AdminPage() {
               <span className="hidden text-xs text-muted-foreground sm:inline">admin</span>
             </div>
 
-            {/* Desktop tabs */}
-            <div className="hidden flex-1 items-center gap-1 overflow-x-auto md:flex">
+            {/* Desktop tabs — shown inline only once there's guaranteed room (lg+);
+                below that the hamburger drawer covers navigation, so this never
+                needs to scroll/overflow. */}
+            <div className="hidden flex-1 items-center gap-1 lg:flex">
               {TABS.map((t) => (
                 <button
                   key={t.id}
@@ -566,8 +568,8 @@ export default function AdminPage() {
               ))}
             </div>
 
-            {/* Mobile: current tab label */}
-            <div className="flex-1 truncate text-sm font-medium text-foreground/90 md:hidden">
+            {/* Below lg: current tab label instead of the full tab row */}
+            <div className="flex-1 truncate text-sm font-medium text-foreground/90 lg:hidden">
               {TABS.find((t) => t.id === tab)?.label}
             </div>
 
