@@ -43,7 +43,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 
 export const Route = createFileRoute("/admin/")({
@@ -436,45 +443,90 @@ export default function AdminPage() {
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-72 p-0">
-                <div className="flex h-14 items-center gap-2.5 border-b border-border px-4">
-                  <img
-                    src="/wabizz-logo.png"
-                    alt="Wabizz"
-                    className="h-7 w-7 rounded-md object-contain"
-                  />
-                  <span className="text-sm font-semibold tracking-tight text-foreground">
-                    Wabizz
-                  </span>
-                  <span className="text-xs text-muted-foreground">admin</span>
-                </div>
-                <div className="flex flex-col gap-1 p-3">
-                  {TABS.map((t) => (
-                    <button
-                      key={t.id}
-                      onClick={() => {
-                        setTab(t.id);
-                        setMobileNavOpen(false);
-                      }}
-                      className={cn(
-                        "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
-                        tab === t.id
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                      )}
-                    >
-                      <t.icon className="h-4 w-4 flex-shrink-0" />
-                      {t.label}
-                      {!!t.badge && (
-                        <Badge
-                          variant="destructive"
-                          className="ml-auto h-4 min-w-4 justify-center rounded-full px-1 text-[10px] leading-none"
-                        >
-                          {t.badge}
-                        </Badge>
-                      )}
-                    </button>
-                  ))}
+              <SheetContent side="left" className="flex w-[280px] flex-col gap-0 p-0">
+                <SheetHeader className="flex-shrink-0 space-y-0 border-b border-border px-5 py-4 text-left">
+                  <div className="flex items-center gap-2.5">
+                    <img
+                      src="/wabizz-logo.png"
+                      alt="Wabizz"
+                      className="h-8 w-8 rounded-lg object-contain shadow-sm ring-1 ring-border"
+                    />
+                    <div className="min-w-0">
+                      <SheetTitle className="text-sm font-semibold leading-tight tracking-tight text-foreground">
+                        Wabizz
+                      </SheetTitle>
+                      <SheetDescription className="text-xs leading-tight text-muted-foreground">
+                        Control plane
+                      </SheetDescription>
+                    </div>
+                  </div>
+                </SheetHeader>
+
+                <nav className="flex-1 overflow-y-auto px-3 py-4">
+                  <div className="mb-1.5 px-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Navigation
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    {TABS.map((t) => (
+                      <button
+                        key={t.id}
+                        onClick={() => {
+                          setTab(t.id);
+                          setMobileNavOpen(false);
+                        }}
+                        className={cn(
+                          "group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                          tab === t.id
+                            ? "bg-primary/10 text-primary"
+                            : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                        )}
+                      >
+                        {tab === t.id && (
+                          <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-primary" />
+                        )}
+                        <t.icon
+                          className={cn(
+                            "h-4 w-4 flex-shrink-0 transition-colors",
+                            tab === t.id ? "text-primary" : "text-muted-foreground group-hover:text-foreground",
+                          )}
+                        />
+                        <span className="flex-1 text-left">{t.label}</span>
+                        {!!t.badge && (
+                          <Badge
+                            variant="destructive"
+                            className="h-4 min-w-4 justify-center rounded-full px-1 text-[10px] leading-none"
+                          >
+                            {t.badge}
+                          </Badge>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </nav>
+
+                <div className="flex-shrink-0 border-t border-border p-3">
+                  <div className="mb-2 flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className="relative flex h-2 w-2">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+                        <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+                      </span>
+                      <span className="text-xs font-medium text-foreground">Live</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">Updates every 9s</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full gap-1.5 text-xs text-muted-foreground"
+                    onClick={() => {
+                      sessionStorage.removeItem("wb_tok");
+                      setToken(null);
+                    }}
+                  >
+                    <LogOut className="h-3.5 w-3.5" />
+                    Exit admin
+                  </Button>
                 </div>
               </SheetContent>
             </Sheet>
