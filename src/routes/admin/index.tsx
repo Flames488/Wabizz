@@ -430,14 +430,14 @@ export default function AdminPage() {
       <div className="min-h-screen bg-background text-sm text-foreground">
         {/* ── TOPBAR ── */}
         <nav className="sticky top-0 z-50 border-b border-border bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80">
-          <div className="flex h-14 items-center gap-1 px-3 sm:px-6">
+          <div className="flex h-14 items-center gap-0.5 px-2.5 sm:gap-1 sm:px-6">
             {/* Mobile hamburger nav */}
             <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
               <SheetTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="mr-1 h-9 w-9 flex-shrink-0 text-muted-foreground md:hidden"
+                  className="h-9 w-9 flex-shrink-0 text-muted-foreground md:hidden"
                   aria-label="Open navigation menu"
                 >
                   <Menu className="h-5 w-5" />
@@ -531,7 +531,7 @@ export default function AdminPage() {
               </SheetContent>
             </Sheet>
 
-            <div className="mr-3 flex h-full flex-shrink-0 items-center gap-2 border-r border-border pr-3 sm:mr-5 sm:gap-2.5 sm:pr-5">
+            <div className="mr-2 flex h-full flex-shrink-0 items-center gap-2 sm:mr-5 sm:gap-2.5 sm:border-r sm:border-border sm:pr-5">
               <img src="/wabizz-logo.png" alt="Wabizz" className="h-7 w-7 rounded-md object-contain" />
               <span className="hidden text-sm font-semibold tracking-tight text-foreground sm:inline">
                 Wabizz
@@ -567,7 +567,7 @@ export default function AdminPage() {
             </div>
 
             {/* Mobile: current tab label */}
-            <div className="flex-1 truncate text-sm font-semibold text-foreground md:hidden">
+            <div className="flex-1 truncate text-sm font-medium text-foreground/90 md:hidden">
               {TABS.find((t) => t.id === tab)?.label}
             </div>
 
@@ -591,7 +591,7 @@ export default function AdminPage() {
               )}
 
               {/* Theme toggle */}
-              <div className="flex items-center gap-1.5 rounded-full border border-border bg-background px-2 py-1">
+              <div className="flex items-center gap-1.5 sm:rounded-full sm:border sm:border-border sm:bg-background sm:px-2 sm:py-1">
                 <Sun
                   className={cn(
                     "h-3.5 w-3.5 transition-colors",
