@@ -107,7 +107,11 @@ async function api(path: string, token: string, opts?: RequestInit) {
 }
 
 // ── Colours ────────────────────────────────────────────────────────────────────
-const C = {
+// C's properties are mutated in place (never reassigned as a new object) when the
+// theme toggles, so module-level consumers created once (Spark, btnS closures)
+// keep reading live values. cardS/inp below bake values at call time via functions
+// for the same reason — see toggleTheme() in AdminPage.
+const DARK_THEME = {
   bg: "#060810",
   surface: "#0c1018",
   card: "#101520",
@@ -123,6 +127,23 @@ const C = {
   muted: "#4a5870",
   dim: "#1a2235",
 };
+const LIGHT_THEME = {
+  bg: "#f7f8fa",
+  surface: "#ffffff",
+  card: "#ffffff",
+  border: "#e2e5ea",
+  green: "#16a34a",
+  greenDim: "#15803d",
+  greenGlow: "#16a34a22",
+  red: "#dc2626",
+  yellow: "#ca8a04",
+  blue: "#2563eb",
+  purple: "#7c3aed",
+  text: "#1e2530",
+  muted: "#6b7280",
+  dim: "#e5e7eb",
+};
+const C = { ...DARK_THEME };
 
 // ── Format helpers ─────────────────────────────────────────────────────────────
 const fmtNaira = (n: number) =>
@@ -248,12 +269,14 @@ function Donut({
 }
 
 // ── Shared styles ──────────────────────────────────────────────────────────────
-const cardS: React.CSSProperties = {
+// Functions (not plain objects) so they read C's current values at call time —
+// a plain object would bake in whatever C held when the module first loaded.
+const cardS = (): React.CSSProperties => ({
   background: C.card,
   border: `1px solid ${C.border}`,
   borderRadius: 10,
-};
-const inp: React.CSSProperties = {
+});
+const inp = (): React.CSSProperties => ({
   background: C.surface,
   border: `1px solid ${C.border}`,
   borderRadius: 6,
@@ -263,7 +286,7 @@ const inp: React.CSSProperties = {
   fontSize: 12,
   outline: "none",
   width: "100%",
-};
+});
 const btnS = (col: string): React.CSSProperties => ({
   background: "none",
   border: `1px solid ${col}44`,
@@ -282,6 +305,20 @@ export default function AdminPage() {
   const [token, setToken] = useState<string | null>(() =>
     typeof window !== "undefined" ? sessionStorage.getItem("wb_tok") : null
   );
+  const [theme, setTheme] = useState<"dark" | "light">(() =>
+    typeof window !== "undefined" && localStorage.getItem("wb_admin_theme") === "light"
+      ? "light"
+      : "dark",
+  );
+  // Mutate C's properties in place (not a reassignment) so every closure that
+  // captured C at module load — Spark, Donut, cardS(), inp() — sees the new
+  // palette without needing to be threaded through props.
+  Object.assign(C, theme === "light" ? LIGHT_THEME : DARK_THEME);
+  const toggleTheme = () => {
+    const next = theme === "light" ? "dark" : "light";
+    setTheme(next);
+    localStorage.setItem("wb_admin_theme", next);
+  };
   type Tab = "overview" | "revenue" | "users" | "queue" | "alerts" | "logs" | "health" | "trace";
   const [tab, setTab] = useState<Tab>("overview");
 
@@ -480,20 +517,11 @@ export default function AdminPage() {
             flexShrink: 0,
           }}
         >
-          <div
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: 7,
-              background: `linear-gradient(135deg,${C.green},${C.greenDim})`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 14,
-            }}
-          >
-            💬
-          </div>
+          <img
+            src="/wabizz-logo.png"
+            alt="Wabizz"
+            style={{ width: 28, height: 28, borderRadius: 7, objectFit: "contain" }}
+          />
           <span style={{ color: C.text, fontSize: 13, fontWeight: 700, letterSpacing: "-0.3px" }}>
             Wabizz
           </span>
@@ -578,6 +606,13 @@ export default function AdminPage() {
             </span>
           )}
           <button
+            onClick={toggleTheme}
+            title={theme === "light" ? "Switch to dark background" : "Switch to white background"}
+            style={{ ...btnS(C.muted), fontSize: 10 }}
+          >
+            {theme === "light" ? "🌙 DARK" : "☀️ WHITE"}
+          </button>
+          <button
             onClick={() => {
               sessionStorage.removeItem("wb_tok");
               setToken(null);
@@ -597,7 +632,7 @@ export default function AdminPage() {
             {ov && (ov.failureRatePct > 20 || ov.dlqCount > 10) && (
               <div
                 style={{
-                  background: "#18080a",
+                  background: `${C.red}18`,
                   border: `1px solid ${C.red}33`,
                   borderRadius: 8,
                   padding: "12px 18px",
@@ -609,7 +644,7 @@ export default function AdminPage() {
               >
                 <span style={{ color: C.red, fontSize: 16 }}>⚡</span>
                 <span style={{ color: C.red, fontWeight: 700 }}>SYSTEM DEGRADED</span>
-                <span style={{ color: "#cc3344", fontSize: 11 }}>
+                <span style={{ color: C.red, fontSize: 11 }}>
                   Failure rate {ov.failureRatePct}% · DLQ {ov.dlqCount} jobs
                 </span>
               </div>
@@ -758,7 +793,7 @@ export default function AdminPage() {
                     <div
                       key={svc}
                       style={{
-                        ...cardS,
+                        ...cardS(),
                         padding: "12px 20px",
                         display: "flex",
                         alignItems: "center",
@@ -812,7 +847,7 @@ export default function AdminPage() {
                   <div
                     key={svc}
                     style={{
-                      ...cardS,
+                      ...cardS(),
                       padding: "16px 20px",
                       borderColor: ok ? C.border : `${C.red}33`,
                     }}
@@ -909,7 +944,7 @@ export default function AdminPage() {
             >
               <div
                 style={{
-                  ...cardS,
+                  ...cardS(),
                   padding: "24px",
                   display: "flex",
                   alignItems: "center",
@@ -927,7 +962,7 @@ export default function AdminPage() {
                   />
                 )}
               </div>
-              <div style={{ ...cardS, padding: "24px" }}>
+              <div style={{ ...cardS(), padding: "24px" }}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
                   {[
                     { plan: "starter", label: "Starter", price: 5000, color: C.blue },
@@ -1053,7 +1088,7 @@ export default function AdminPage() {
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
               {/* Growth stats */}
-              <div style={{ ...cardS, padding: "20px 24px" }}>
+              <div style={{ ...cardS(), padding: "20px 24px" }}>
                 <div
                   style={{ color: C.muted, fontSize: 10, letterSpacing: "1.5px", marginBottom: 18 }}
                 >
@@ -1083,7 +1118,7 @@ export default function AdminPage() {
               </div>
 
               {/* Recent signups */}
-              <div style={{ ...cardS, padding: "20px 24px" }}>
+              <div style={{ ...cardS(), padding: "20px 24px" }}>
                 <div
                   style={{ color: C.muted, fontSize: 10, letterSpacing: "1.5px", marginBottom: 18 }}
                 >
@@ -1265,7 +1300,7 @@ export default function AdminPage() {
                   <div
                     key={a.id}
                     style={{
-                      ...cardS,
+                      ...cardS(),
                       padding: "14px 18px",
                       borderLeft: `3px solid ${a.severity === "critical" ? C.red : a.severity === "warning" ? C.yellow : C.blue}`,
                     }}
@@ -1327,7 +1362,7 @@ export default function AdminPage() {
               <select
                 value={logFilter.level}
                 onChange={(e) => setLogFilter((f) => ({ ...f, level: e.target.value }))}
-                style={{ ...inp, width: 130 }}
+                style={{ ...inp(), width: 130 }}
               >
                 <option value="">ALL LEVELS</option>
                 <option value="warn">WARN</option>
@@ -1338,7 +1373,7 @@ export default function AdminPage() {
                 placeholder="Filter source…"
                 value={logFilter.source}
                 onChange={(e) => setLogFilter((f) => ({ ...f, source: e.target.value }))}
-                style={{ ...inp, width: 180 }}
+                style={{ ...inp(), width: 180 }}
               />
               <button onClick={refresh} style={btnS(C.green)}>
                 ↻ REFRESH
@@ -1353,7 +1388,7 @@ export default function AdminPage() {
                     key={log.id}
                     onClick={() => setExpandedLog(expandedLog === log.id ? null : log.id)}
                     style={{
-                      ...cardS,
+                      ...cardS(),
                       padding: "11px 16px",
                       cursor: "pointer",
                       borderLeft: `3px solid ${log.level === "fatal" ? C.red : log.level === "error" ? "#f97316" : C.yellow}`,
@@ -1415,7 +1450,7 @@ export default function AdminPage() {
                   <div
                     key={svc}
                     style={{
-                      ...cardS,
+                      ...cardS(),
                       padding: "18px 22px",
                       borderColor: ok ? C.border : `${C.red}44`,
                     }}
@@ -1541,7 +1576,7 @@ export default function AdminPage() {
                 value={traceId}
                 onChange={(e) => setTraceId(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && doTrace()}
-                style={{ ...inp, flex: 1 }}
+                style={{ ...inp(), flex: 1 }}
               />
               <button
                 onClick={doTrace}
@@ -1600,7 +1635,7 @@ export default function AdminPage() {
                         <div
                           key={l.id}
                           style={{
-                            ...cardS,
+                            ...cardS(),
                             padding: "10px 14px",
                             borderLeft: `3px solid ${l.level === "error" || l.level === "fatal" ? C.red : C.yellow}`,
                           }}
@@ -1772,7 +1807,7 @@ function ChartBox({
   children: React.ReactNode;
 }) {
   return (
-    <div style={{ ...cardS, padding: "18px 20px" }}>
+    <div style={{ ...cardS(), padding: "18px 20px" }}>
       <div style={{ color: C.muted, fontSize: 10, letterSpacing: "1.5px", marginBottom: 14 }}>
         {title}
       </div>
