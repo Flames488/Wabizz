@@ -136,12 +136,24 @@ export const Route = createFileRoute("/api/public/twilio-webhook")({
                   : bodyRaw;
               const profileName = params.get("ProfileName");
               const messageSid = params.get("MessageSid") ?? undefined;
+              // WhatsApp usernames: once a user hides their phone number, Twilio sends
+              // a Business-Scoped User ID (BSUID, e.g. "US.13491208655302741918") in
+              // `From` instead of a phone number, and mirrors it in `ExternalUserId`.
+              // When a real phone IS present, `ExternalUserId` still carries the BSUID
+              // alongside it. See: https://www.twilio.com/en-us/changelog/whatsapp-usernames--new-business-scoped-user-id--bsuid--field-re
+              const externalUserId = params.get("ExternalUserId") || null;
 
               if (!from || !to || !body) {
                 return twimlResponse("");
               }
 
-              const customerNumber = normalizePhone(stripWhatsappPrefix(from));
+              const strippedFrom = stripWhatsappPrefix(from);
+              // Running a BSUID through normalizePhone (digits + "+" only) would strip
+              // its country-code prefix and dot, silently corrupting it into a fake
+              // phone-shaped string. Detect the BSUID format (2-letter country code,
+              // ".", alphanumeric) and use it as-is instead.
+              const isBsuid = /^[A-Za-z]{2}\.[A-Za-z0-9]+$/.test(strippedFrom);
+              const customerNumber = isBsuid ? strippedFrom : normalizePhone(strippedFrom);
               const businessNumber = normalizePhone(stripWhatsappPrefix(to));
 
               // Look up business by WhatsApp number — cached for 600s (same TTL as whatsappConfig).
@@ -317,6 +329,7 @@ export const Route = createFileRoute("/api/public/twilio-webhook")({
                       {
                         business_id: bizId,
                         phone: customerNumber,
+                        external_user_id: externalUserId,
                         name: profileName ?? null,
                         tags: automationMatch.addTags,
                         source: "chat",
@@ -348,6 +361,7 @@ export const Route = createFileRoute("/api/public/twilio-webhook")({
                   {
                     business_id: bizId,
                     phone: customerNumber,
+                    external_user_id: externalUserId,
                     name: profileName ?? null,
                     source: "chat",
                     last_messaged_at: new Date().toISOString(),
