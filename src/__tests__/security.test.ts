@@ -15,8 +15,8 @@
 
 import { describe, it, expect } from "vitest";
 import { createHmac } from "crypto";
-import { verifyTwilioSignature } from "../../routes/api.public.twilio-webhook";
-import { verifyPaystackSignature } from "../../routes/api.public.paystack-webhook";
+import { verifyTwilioSignature } from "../lib/server/twilio-crypto.server";
+import { verifyPaystackSignature } from "../lib/server/paystack-crypto.server";
 
 // ── Helper to build a valid Twilio signature ─────────────────────────────────
 

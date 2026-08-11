@@ -20,7 +20,7 @@ import {
   handleIncomingMessage,
   handlePaystackEvent,
   buildSystemPrompt,
-} from "../../lib/server/twilio-handler";
+} from "../lib/server/twilio-handler";
 import type {
   IncomingMessagePayload,
   IncomingMessageDeps,
@@ -28,7 +28,7 @@ import type {
   AiDeps,
   PaystackDeps,
   BusinessProfile,
-} from "../../lib/server/twilio-handler";
+} from "../lib/server/twilio-handler";
 
 // ── Mock server-logger ───────────────────────────────────────────────────────
 // FIX BUG 5: mock ALL exported logger functions, not just logError.
@@ -36,14 +36,14 @@ import type {
 // "Auto-reply sent", "Conversation escalated"). Without these mocks the
 // test suite crashes with "undefined is not a function" on those paths.
 
-vi.mock("../../lib/server-logger", () => ({
+vi.mock("../lib/server-logger", () => ({
   logError: vi.fn().mockResolvedValue(undefined),
   logInfo: vi.fn().mockResolvedValue(undefined),
   logWarn: vi.fn().mockResolvedValue(undefined),
   logFatal: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { logError } from "../../lib/server-logger";
+import { logError } from "../lib/server-logger";
 const mockLogError = vi.mocked(logError);
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────

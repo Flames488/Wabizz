@@ -15,22 +15,22 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { handleIncomingMessage, handlePaystackEvent } from "../../lib/server/twilio-handler";
+import { handleIncomingMessage, handlePaystackEvent } from "../lib/server/twilio-handler";
 import type {
   DbDeps,
   AiDeps,
   PaystackDeps,
   BusinessProfile,
-} from "../../lib/server/twilio-handler";
+} from "../lib/server/twilio-handler";
 
-vi.mock("../../lib/server-logger", () => ({
+vi.mock("../lib/server-logger", () => ({
   logError: vi.fn().mockResolvedValue(undefined),
   logInfo: vi.fn().mockResolvedValue(undefined),
   logWarn: vi.fn().mockResolvedValue(undefined),
   logFatal: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { logError } from "../../lib/server-logger";
+import { logError } from "../lib/server-logger";
 const mockLogError = vi.mocked(logError);
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
