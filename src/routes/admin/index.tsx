@@ -272,6 +272,13 @@ export default function AdminPage() {
       ? "dark"
       : "light",
   );
+  // Radix portals (Sheet, Dialog, etc.) render into document.body, outside this
+  // component's tree — a .dark class scoped only to the wrapper div below never
+  // reaches them, so they'd silently render in light-mode colors. Mirroring the
+  // class onto <html> keeps portaled content in sync with the toggle.
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", theme === "dark");
+  }, [theme]);
   const toggleTheme = () => {
     const next = theme === "light" ? "dark" : "light";
     setTheme(next);
@@ -669,14 +676,14 @@ export default function AdminPage() {
                   label="Total users"
                   value={usr ? fmtNum(usr.totalBusinesses) : "—"}
                   sub={usr ? `+${usr.newToday} today` : ""}
-                  color="text-blue-500"
+                  color="text-blue-500 dark:text-blue-400"
                   icon={Building2}
                 />
                 <HeroCard
                   label="Active now"
                   value={ov ? fmtNum(ov.activeUsers) : "—"}
                   sub="last 15 minutes"
-                  color="text-violet-500"
+                  color="text-violet-500 dark:text-violet-400"
                   icon={Zap}
                 />
                 <HeroCard
@@ -698,7 +705,7 @@ export default function AdminPage() {
                 <StatCard
                   label="Paying users"
                   value={usr ? fmtNum(usr.activeSubs) : "—"}
-                  color="text-blue-500"
+                  color="text-blue-500 dark:text-blue-400"
                   sub={usr ? `${usr.trialSubs} on trial` : undefined}
                 />
                 <StatCard
@@ -821,8 +828,8 @@ export default function AdminPage() {
               <SectionLabel>Revenue overview</SectionLabel>
               <div className="mb-7 grid grid-cols-2 gap-3.5 lg:grid-cols-4">
                 <HeroCard label="MRR" value={rev ? fmtNaira(rev.mrr) : "—"} sub="monthly recurring" color="text-primary" icon={TrendingUp} glow />
-                <HeroCard label="All-time revenue" value={rev ? fmtNaira(rev.totalAllTime) : "—"} sub="from paid orders" color="text-blue-500" icon={Gem} />
-                <HeroCard label="This month" value={rev ? fmtNaira(rev.monthRevenue) : "—"} sub="last 30 days" color="text-violet-500" icon={CalendarDays} />
+                <HeroCard label="All-time revenue" value={rev ? fmtNaira(rev.totalAllTime) : "—"} sub="from paid orders" color="text-blue-500 dark:text-blue-400" icon={Gem} />
+                <HeroCard label="This month" value={rev ? fmtNaira(rev.monthRevenue) : "—"} sub="last 30 days" color="text-violet-500 dark:text-violet-400" icon={CalendarDays} />
                 <HeroCard label="Today" value={rev ? fmtNaira(rev.todayRevenue) : "—"} sub="since midnight" color="text-warning" icon={Zap} />
               </div>
 
@@ -879,7 +886,7 @@ export default function AdminPage() {
                       ? `${Math.round((usr.activeSubs / (usr.activeSubs + usr.trialSubs)) * 100)}%`
                       : "—"
                   }
-                  color="text-blue-500"
+                  color="text-blue-500 dark:text-blue-400"
                 />
               </div>
             </div>
@@ -890,7 +897,7 @@ export default function AdminPage() {
             <div>
               <SectionLabel>User overview</SectionLabel>
               <div className="mb-7 grid grid-cols-2 gap-3.5 lg:grid-cols-4">
-                <HeroCard label="Total businesses" value={usr ? fmtNum(usr.totalBusinesses) : "—"} sub="all time" color="text-blue-500" icon={Building2} />
+                <HeroCard label="Total businesses" value={usr ? fmtNum(usr.totalBusinesses) : "—"} sub="all time" color="text-blue-500 dark:text-blue-400" icon={Building2} />
                 <HeroCard
                   label="New today"
                   value={usr ? fmtNum(usr.newToday) : "—"}
@@ -899,7 +906,7 @@ export default function AdminPage() {
                   icon={Sparkles}
                   glow={!!usr?.newToday}
                 />
-                <HeroCard label="New this month" value={usr ? fmtNum(usr.newThisMonth) : "—"} sub="last 30 days" color="text-violet-500" icon={CalendarDays} />
+                <HeroCard label="New this month" value={usr ? fmtNum(usr.newThisMonth) : "—"} sub="last 30 days" color="text-violet-500 dark:text-violet-400" icon={CalendarDays} />
                 <HeroCard label="Active now" value={ov ? fmtNum(ov.activeUsers) : "—"} sub="last 15 min" color="text-warning" icon={Zap} />
               </div>
 
@@ -909,7 +916,7 @@ export default function AdminPage() {
                   {[
                     { label: "Active Subscriptions", value: usr?.activeSubs ?? 0, color: "text-primary" },
                     { label: "Free Trials", value: usr?.trialSubs ?? 0, color: "text-warning" },
-                    { label: "Total Businesses", value: usr?.totalBusinesses ?? 0, color: "text-blue-500" },
+                    { label: "Total Businesses", value: usr?.totalBusinesses ?? 0, color: "text-blue-500 dark:text-blue-400" },
                   ].map((row) => (
                     <div key={row.label} className="flex items-center justify-between border-b border-border py-3 last:border-0">
                       <span className="text-xs text-muted-foreground">{row.label}</span>
@@ -1047,7 +1054,7 @@ export default function AdminPage() {
                         "border-l-[3px] p-4",
                         a.severity === "critical" && "border-l-destructive",
                         a.severity === "warning" && "border-l-warning",
-                        a.severity === "info" && "border-l-blue-500",
+                        a.severity === "info" && "border-l-blue-500 dark:border-l-blue-400",
                       )}
                     >
                       <div className="mb-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -1110,7 +1117,7 @@ export default function AdminPage() {
                       className={cn(
                         "cursor-pointer border-l-[3px] px-4 py-2.5",
                         log.level === "fatal" && "border-l-destructive",
-                        log.level === "error" && "border-l-orange-500",
+                        log.level === "error" && "border-l-orange-500 dark:border-l-orange-400",
                         log.level === "warn" && "border-l-warning",
                       )}
                     >
@@ -1121,7 +1128,7 @@ export default function AdminPage() {
                           <ChevronRight className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
                         )}
                         <LvlBadge lvl={log.level} />
-                        <span className="min-w-[100px] text-xs font-medium text-blue-500 sm:min-w-[140px]">{log.source}</span>
+                        <span className="min-w-[100px] text-xs font-medium text-blue-500 dark:text-blue-400 sm:min-w-[140px]">{log.source}</span>
                         <span className="min-w-0 flex-1 basis-full text-foreground sm:basis-auto">{log.message}</span>
                         <span className="ml-auto whitespace-nowrap text-xs text-muted-foreground">{fmtTime(log.occurred_at)}</span>
                       </div>
@@ -1280,7 +1287,7 @@ export default function AdminPage() {
                           >
                             <div className="flex items-center gap-2.5">
                               <LvlBadge lvl={l.level} />
-                              <span className="min-w-[130px] text-xs text-blue-500">{l.source}</span>
+                              <span className="min-w-[130px] text-xs text-blue-500 dark:text-blue-400">{l.source}</span>
                               <span className="flex-1 text-foreground">{l.message}</span>
                               <span className="text-xs text-muted-foreground">{fmtTime(l.occurred_at)}</span>
                             </div>
@@ -1413,7 +1420,8 @@ function Tag({ children, color }: { children: React.ReactNode; color: "blue" }) 
     <span
       className={cn(
         "inline-block rounded-md border px-2 py-0.5 text-[10px]",
-        color === "blue" && "border-blue-500/30 bg-blue-500/10 text-blue-500",
+        color === "blue" &&
+          "border-blue-500/30 bg-blue-500/10 text-blue-500 dark:text-blue-400 dark:border-blue-400/30 dark:bg-blue-400/10",
       )}
     >
       {children}
@@ -1423,13 +1431,13 @@ function Tag({ children, color }: { children: React.ReactNode; color: "blue" }) 
 
 function Code({ children }: { children: React.ReactNode }) {
   return (
-    <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-violet-500">{children}</span>
+    <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-violet-500 dark:text-violet-400">{children}</span>
   );
 }
 
 function SevBadge({ sev }: { sev: "info" | "warning" | "critical" }) {
   const m: Record<string, [React.ElementType, string]> = {
-    info: [Info, "text-blue-500"],
+    info: [Info, "text-blue-500 dark:text-blue-400"],
     warning: [AlertTriangle, "text-warning"],
     critical: [XCircle, "text-destructive"],
   };
@@ -1443,7 +1451,7 @@ function SevBadge({ sev }: { sev: "info" | "warning" | "critical" }) {
 }
 
 function LvlBadge({ lvl }: { lvl: string }) {
-  const color = lvl === "fatal" ? "text-destructive" : lvl === "error" ? "text-orange-500" : "text-warning";
+  const color = lvl === "fatal" ? "text-destructive" : lvl === "error" ? "text-orange-500 dark:text-orange-400" : "text-warning";
   return <span className={cn("min-w-[40px] text-[10px] font-bold uppercase tracking-wide", color)}>{lvl}</span>;
 }
 
