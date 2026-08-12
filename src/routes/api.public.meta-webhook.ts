@@ -18,6 +18,7 @@ import { isBankTransfer, parseBankTransferKey } from "@/lib/paystack";
 import { fetchWithRetry } from "@/lib/server/request-timeout";
 import { applySecurityHeaders } from "@/lib/server/security-headers";
 import { events } from "@/lib/server/event-pipeline";
+import { forwardReplyIfConfigured } from "@/lib/server/reply-forwarder";
 
 const VERIFY_TOKEN_ENV = "META_WEBHOOK_VERIFY_TOKEN";
 
@@ -246,6 +247,12 @@ async function processTextMessage(args: {
   const contact = value.contacts?.find((c) => c.wa_id === message.from);
   const customerName = contact?.profile?.name ?? null;
 
+  // Forward reply to the business's external webhook, if configured — only
+  // for contacts reached via /api/send (source="api"). Fire-and-forget,
+  // before automation branching so it fires regardless of which path
+  // handles the message. See src/lib/server/reply-forwarder.ts.
+  void forwardReplyIfConfigured({ bizId: wa.business_id, customerNumber, body, requestId }).catch(() => {});
+
   if (automationMatch) {
     if (automationMatch.actionType === "opt_out") {
       await supabaseAdmin
@@ -274,12 +281,29 @@ async function processTextMessage(args: {
     }
   }
 
+  // Preserve an existing source (e.g. "api") instead of clobbering it to
+  // "chat" on every inbound message — see the Twilio webhook for the same fix.
   void supabaseAdmin
     .from("contacts")
-    .upsert(
-      { business_id: wa.business_id, phone: customerNumber, name: customerName, source: "chat", last_messaged_at: new Date().toISOString() },
-      { onConflict: "business_id,phone", ignoreDuplicates: false },
-    )
+    .select("id")
+    .eq("business_id", wa.business_id)
+    .eq("phone", customerNumber)
+    .maybeSingle()
+    .then(({ data: existing }) => {
+      if (existing) {
+        return supabaseAdmin
+          .from("contacts")
+          .update({ name: customerName ?? undefined, last_messaged_at: new Date().toISOString() })
+          .eq("id", existing.id);
+      }
+      return supabaseAdmin.from("contacts").insert({
+        business_id: wa.business_id,
+        phone: customerNumber,
+        name: customerName,
+        source: "chat",
+        last_messaged_at: new Date().toISOString(),
+      });
+    })
     .catch(() => {});
 
   const biz = await getBusinessProfile(wa.business_id);

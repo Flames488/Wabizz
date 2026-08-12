@@ -34,6 +34,7 @@ import { getWhatsAppApiKey } from "@/lib/keys.functions";
 import { sendNeedsYouAlert } from "@/lib/server/reminders";
 import { matchAutomationRule } from "@/lib/automation.functions";
 import { enqueue } from "@/lib/queue";
+import { forwardReplyIfConfigured } from "@/lib/server/reply-forwarder";
 
 // Maximum number of history messages sent to the AI.
 // Keep this at 20 — 30 × 4 000-char messages approaches 120 k chars of context
@@ -281,6 +282,13 @@ export const Route = createFileRoute("/api/public/twilio-webhook")({
                 requestId,
               );
 
+              // ── Forward reply to the business's external webhook, if configured ──
+              // Only for contacts reached via /api/send (source="api") — e.g. Vitar's
+              // outreach. Fire-and-forget, before automation branching, so it fires
+              // regardless of which branch (opt_out/reply/tag/AI) ends up handling
+              // the message. Must never block or fail the Twilio response.
+              void forwardReplyIfConfigured({ bizId, customerNumber, body, requestId }).catch(() => {});
+
               // ── Automation rule check ───────────────────────────────────────
               // Check before the AI call. If a keyword rule matches, enqueue
               // the action and short-circuit — no AI tokens consumed.
@@ -322,20 +330,30 @@ export const Route = createFileRoute("/api/public/twilio-webhook")({
                 }
 
                 if (automationMatch.actionType === "tag" && automationMatch.addTags?.length > 0) {
-                  // Upsert contact then merge tags via DB function (avoids overwrite race)
+                  // Upsert contact (preserving an existing source, see the main
+                  // inbound upsert below for why) then merge tags via DB function.
                   void supabaseAdmin
                     .from("contacts")
-                    .upsert(
-                      {
+                    .select("id")
+                    .eq("business_id", bizId)
+                    .eq("phone", customerNumber)
+                    .maybeSingle()
+                    .then(({ data: existing }) => {
+                      if (existing) {
+                        return supabaseAdmin
+                          .from("contacts")
+                          .update({ external_user_id: externalUserId, name: profileName ?? undefined })
+                          .eq("id", existing.id);
+                      }
+                      return supabaseAdmin.from("contacts").insert({
                         business_id: bizId,
                         phone: customerNumber,
                         external_user_id: externalUserId,
                         name: profileName ?? null,
                         tags: automationMatch.addTags,
                         source: "chat",
-                      },
-                      { onConflict: "business_id,phone", ignoreDuplicates: false },
-                    )
+                      });
+                    })
                     .then(async () => {
                       await supabaseAdmin.rpc("merge_contact_tags", {
                         p_business_id: bizId,
@@ -355,20 +373,40 @@ export const Route = createFileRoute("/api/public/twilio-webhook")({
               }
 
               // ── Upsert contact on every inbound (keeps contact list current) ──
+              // Read the existing row first so we never clobber `source` on an
+              // UPDATE — only a brand-new contact gets source="chat". Without
+              // this, a contact tagged source="api" (reached via /api/send,
+              // e.g. by Vitar) would silently flip back to "chat" the moment
+              // they replied, breaking reply-forwarding after their first
+              // message. This also fixes the same latent bug for source
+              // ="import"/"manual" contacts, which were being overwritten to
+              // "chat" on every subsequent inbound message.
               void supabaseAdmin
                 .from("contacts")
-                .upsert(
-                  {
+                .select("id")
+                .eq("business_id", bizId)
+                .eq("phone", customerNumber)
+                .maybeSingle()
+                .then(({ data: existing }) => {
+                  if (existing) {
+                    return supabaseAdmin
+                      .from("contacts")
+                      .update({
+                        external_user_id: externalUserId,
+                        name: profileName ?? undefined,
+                        last_messaged_at: new Date().toISOString(),
+                      })
+                      .eq("id", existing.id);
+                  }
+                  return supabaseAdmin.from("contacts").insert({
                     business_id: bizId,
                     phone: customerNumber,
                     external_user_id: externalUserId,
                     name: profileName ?? null,
                     source: "chat",
                     last_messaged_at: new Date().toISOString(),
-                  },
-                  { onConflict: "business_id,phone", ignoreDuplicates: false },
-                )
-                .then(() => {}) // fire-and-forget
+                  });
+                })
                 .catch(() => {});
 
               const db: DbDeps = buildDbDeps(requestId);

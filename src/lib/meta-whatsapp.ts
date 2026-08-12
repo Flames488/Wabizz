@@ -87,6 +87,111 @@ export async function sendMetaTextMessage(opts: {
   }
 }
 
+/**
+ * Send an approved WhatsApp template message. Required for business-initiated
+ * contact with a user who has never messaged first — free-form text (above)
+ * is only legal within the 24h customer-service window that opens once a
+ * user has messaged in.
+ */
+export async function sendMetaTemplateMessage(opts: {
+  phoneNumberId: string;
+  accessToken: string;
+  to: string;
+  templateName: string;
+  languageCode: string;
+  components?: unknown[];
+}): Promise<void> {
+  const res = await fetch(`${GRAPH_BASE}/${opts.phoneNumberId}/messages`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${opts.accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to: opts.to.replace(/[^\d]/g, ""),
+      type: "template",
+      template: {
+        name: opts.templateName,
+        language: { code: opts.languageCode },
+        ...(opts.components?.length ? { components: opts.components } : {}),
+      },
+    }),
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Meta Cloud API (template) ${res.status}: ${body.slice(0, 300)}`);
+  }
+}
+
+// ── Template management (submission + status) ─────────────────────────────────
+// Submitting a template only queues it for Meta's review — approval itself
+// happens on Meta's side (hours to days) and cannot be triggered by code.
+
+export interface CreateTemplateResult {
+  id: string;
+  status: string; // "PENDING" | "APPROVED" | "REJECTED" typically
+  category: string;
+}
+
+export async function createMessageTemplate(opts: {
+  wabaId: string;
+  accessToken: string;
+  name: string;
+  language: string;
+  category: "UTILITY" | "MARKETING" | "AUTHENTICATION";
+  components: unknown[];
+}): Promise<CreateTemplateResult> {
+  const res = await fetch(`${GRAPH_BASE}/${opts.wabaId}/message_templates`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${opts.accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      name: opts.name,
+      language: opts.language,
+      category: opts.category,
+      components: opts.components,
+    }),
+    signal: AbortSignal.timeout(15_000),
+  });
+  const data = (await res.json().catch(() => ({}))) as Partial<CreateTemplateResult> & {
+    error?: { message?: string };
+  };
+  if (!res.ok) {
+    throw new Error(`Template submission failed: ${res.status} ${data.error?.message ?? JSON.stringify(data).slice(0, 300)}`);
+  }
+  return {
+    id: data.id ?? "",
+    status: data.status ?? "PENDING",
+    category: data.category ?? opts.category,
+  };
+}
+
+export async function getMessageTemplateStatus(opts: {
+  wabaId: string;
+  accessToken: string;
+  name: string;
+}): Promise<{ status: string; rejectedReason: string | null } | null> {
+  const url = new URL(`${GRAPH_BASE}/${opts.wabaId}/message_templates`);
+  url.searchParams.set("name", opts.name);
+  url.searchParams.set("fields", "name,status,rejected_reason");
+  const res = await fetch(url.toString(), {
+    headers: { Authorization: `Bearer ${opts.accessToken}` },
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!res.ok) return null;
+  const data = (await res.json()) as {
+    data?: Array<{ status?: string; rejected_reason?: string }>;
+  };
+  const row = data.data?.[0];
+  if (!row) return null;
+  return { status: row.status ?? "PENDING", rejectedReason: row.rejected_reason ?? null };
+}
+
 // ── Token exchange ────────────────────────────────────────────────────────────
 
 export async function exchangeForLongLivedToken(opts: {
